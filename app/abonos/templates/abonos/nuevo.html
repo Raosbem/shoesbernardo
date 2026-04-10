@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Registrar Abono{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+
+    <div class="d-flex align-items-center mb-3 gap-2">
+      <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h5 class="fw-bold mb-0"><i class="bi bi-cash-coin text-success"></i> Registrar Abono</h5>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" id="formAbono">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Selector de cliente -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
+            <select name="cliente_id" id="selectCliente" class="form-select form-select-lg" required>
+              <option value="">— Seleccionar cliente —</option>
+              {% for c in clientes %}
+              <option value="{{ c.id }}"
+                {% if cliente_presel and cliente_presel.id == c.id %}selected{% endif %}>
+                {{ c.nombre }}
+                {% if c.saldo > 0 %}(debe ${{ "%.0f"|format(c.saldo) }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Saldo actual (se actualiza con JS) -->
+          <div id="saldoInfo" class="alert alert-warning py-2 d-none">
+            <i class="bi bi-exclamation-circle"></i>
+            Saldo actual: <strong id="saldoValor"></strong>
+          </div>
+
+          <!-- Monto -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Monto del abono <span class="text-danger">*</span></label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text">$</span>
+              <input type="number" name="monto" class="form-control" id="inputMonto"
+                     placeholder="0" min="1" step="1" required autofocus>
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Nota <small class="text-muted fw-normal">(opcional)</small></label>
+            <input type="text" name="notas" class="form-control"
+                   placeholder="Ej: pagó en campo, lunes">
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="bi bi-check-circle"></i> Confirmar Abono
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <a href="{{ url_for('abonos.historial') }}" class="text-decoration-none small">
+        <i class="bi bi-clock-history"></i> Ver historial de abonos
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Datos de saldos para mostrar info al seleccionar cliente
+const saldos = {
+  {% for c in clientes %}
+  {{ c.id }}: {{ c.saldo }},
+  {% endfor %}
+};
+
+document.getElementById('selectCliente').addEventListener('change', function() {
+  const id = parseInt(this.value);
+  const info = document.getElementById('saldoInfo');
+  const valor = document.getElementById('saldoValor');
+  if (id && saldos[id] > 0) {
+    valor.textContent = '$' + Math.round(saldos[id]);
+    info.classList.remove('d-none');
+  } else {
+    info.classList.add('d-none');
+  }
+});
+
+// Disparar al cargar si hay cliente preseleccionado
+document.getElementById('selectCliente').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

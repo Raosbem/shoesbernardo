@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Pedidos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('pedidos.lista') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h5 class="fw-bold mb-0">
+      {% if q %}
+        Búsqueda: <span class="text-primary">{{ q }}</span>
+      {% elif zapateria_sel %}
+        {{ zapateria_sel.nombre }}
+      {% else %}
+        Todos los pedidos
+      {% endif %}
+    </h5>
+  </div>
+  <a href="{{ url_for('pedidos.nuevo') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus"></i> Nuevo
+  </a>
+</div>
+
+<!-- Buscador -->
+<form method="GET" action="{{ url_for('pedidos.lista') }}" class="mb-3">
+  {% if zapateria_id %}<input type="hidden" name="zapateria_id" value="{{ zapateria_id }}">{% endif %}
+  <div class="input-group input-group-sm">
+    <span class="input-group-text bg-white border-end-0">
+      <i class="bi bi-search text-muted"></i>
+    </span>
+    <input type="text" name="q" class="form-control border-start-0 ps-0"
+           placeholder="Buscar por código…" value="{{ q }}">
+    {% if q %}
+    <a href="{{ url_for('pedidos.lista', zapateria_id=zapateria_id or '') }}"
+       class="btn btn-outline-secondary">
+      <i class="bi bi-x"></i>
+    </a>
+    {% else %}
+    <button type="submit" class="btn btn-outline-dark">Buscar</button>
+    {% endif %}
+  </div>
+</form>
+
+{% if not q %}
+<!-- Pestañas de estatus (solo cuando no hay búsqueda) -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('pedidos.lista', estatus='activos', zapateria_id=zapateria_id or '', cliente_id=cliente_id or '') }}"
+     class="btn btn-sm {% if estatus == 'activos' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+    Activos
+    {% if estatus == 'activos' %}
+      <span class="badge bg-warning text-dark ms-1">{{ total_pendiente }}</span>
+      <span class="badge bg-primary ms-1">{{ total_comprado }}</span>
+    {% endif %}
+  </a>
+  <a href="{{ url_for('pedidos.lista', estatus='pendiente', zapateria_id=zapateria_id or '', cliente_id=cliente_id or '') }}"
+     class="btn btn-sm {% if estatus == 'pendiente' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+    Pendientes <span class="badge bg-dark ms-1">{{ total_pendiente }}</span>
+  </a>
+  <a href="{{ url_for('pedidos.lista', estatus='comprado', zapateria_id=zapateria_id or '', cliente_id=cliente_id or '') }}"
+     class="btn btn-sm {% if estatus == 'comprado' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    Comprados <span class="badge bg-dark ms-1">{{ total_comprado }}</span>
+  </a>
+  <a href="{{ url_for('pedidos.lista', estatus='entregado', zapateria_id=zapateria_id or '', cliente_id=cliente_id or '') }}"
+     class="btn btn-sm {% if estatus == 'entregado' %}btn-success{% else %}btn-outline-success{% endif %}">
+    Entregados
+  </a>
+  <a href="{{ url_for('pedidos.lista', estatus='todos', zapateria_id=zapateria_id or '', cliente_id=cliente_id or '') }}"
+     class="btn btn-sm {% if estatus == 'todos' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+    Todos
+  </a>
+</div>
+
+<!-- Selector de rango de fechas (solo en vistas históricas) -->
+{% if estatus in ('entregado', 'todos', 'cancelado', 'devuelto') %}
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+  <span class="text-muted small">Período:</span>
+  {% for rango, label in [('semana', 'Esta semana'), ('mes', 'Este mes'), ('trimestre', 'Últimos 3 meses'), ('todo', 'Todo el historial')] %}
+  <a href="{{ url_for('pedidos.lista', estatus=estatus, zapateria_id=zapateria_id or '', cliente_id=cliente_id or '', fecha_rango=rango) }}"
+     class="btn btn-sm {% if fecha_rango == rango %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Filtro por cliente (solo en nivel de zapatería) -->
+{% if zapateria_id %}
+<form method="GET" class="row g-2 mb-3">
+  <input type="hidden" name="estatus" value="{{ estatus }}">
+  <input type="hidden" name="zapateria_id" value="{{ zapateria_id }}">
+  <div class="col-8 col-md-5">
+    <select name="cliente_id" class="form-select form-select-sm">
+      <option value="">Todos los clientes</option>
+      {% for c in clientes %}
+      <option value="{{ c.id }}" {% if cliente_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-4 col-md-2">
+    <button type="submit" class="btn btn-outline-dark btn-sm w-100">
+      <i class="bi bi-filter"></i> Filtrar
+    </button>
+  </div>
+</form>
+{% endif %}
+{% endif %}
+
+{% if pedidos %}
+  {% if q %}
+  <!-- Resultado de búsqueda: indicador de cuántos se encontraron -->
+  <p class="text-muted small mb-3">{{ pedidos|length }} resultado(s) para "<strong>{{ q }}</strong>"</p>
+  {% endif %}
+
+  <!-- Grupos por zapatería -->
+  {% for nombre_zap, grupo in grupos %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="fw-bold">
+        <i class="bi bi-building text-muted"></i> {{ nombre_zap }}
+        <span class="text-muted fw-normal small ms-1">({{ grupo.pedidos|length }})</span>
+      </span>
+      {% if not q %}
+      <!-- Exportar PDF -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="bi bi-file-pdf"></i> Exportar
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item"
+               href="{{ url_for('pedidos.exportar_pdf', zapateria_id=grupo.zapateria.id, rango='hoy', estatus=estatus) }}">
+              <i class="bi bi-calendar-day"></i> Solo hoy
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item"
+               href="{{ url_for('pedidos.exportar_pdf', zapateria_id=grupo.zapateria.id, rango='semana', estatus=estatus) }}">
+              <i class="bi bi-calendar-week"></i> Esta semana
+            </a>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="text-muted" style="width:50px">#</th>
+            <th>Cliente</th>
+            <th>Producto</th>
+            <th class="text-end">Precio</th>
+            <th>Estatus</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in grupo.pedidos %}
+          <tr>
+            <td class="text-muted small fw-semibold">{{ p.id }}</td>
+            <td class="fw-semibold">
+              <a href="{{ url_for('clientes.detalle', id=p.cliente_id) }}"
+                 class="text-decoration-none">{{ p.cliente.nombre }}</a>
+            </td>
+            <td>
+              <!-- Código y talla: datos clave -->
+              <div class="fw-bold">
+                {% if p.codigo_producto %}#{{ p.codigo_producto }}{% else %}<span class="text-muted">—</span>{% endif %}
+                {% if p.talla %}<span class="ms-2 badge bg-secondary">T{{ p.talla }}</span>{% endif %}
+              </div>
+              <!-- Descripción y color: secundarios -->
+              <div class="text-muted" style="font-size:.78rem">
+                <a href="{{ url_for('pedidos.detalle', id=p.id) }}" class="text-decoration-none text-muted">
+                  {{ p.descripcion[:30] if p.descripcion else '' }}{% if p.descripcion and p.descripcion|length > 30 %}…{% endif %}
+                </a>
+                {% if p.color %} · {{ p.color }}{% endif %}
+              </div>
+            </td>
+            <td class="text-end fw-semibold">${{ "%.0f"|format(p.precio_venta) }}</td>
+            <td><span class="badge estatus-{{ p.estatus }}">{{ p.estatus }}</span></td>
+            <td class="text-end text-nowrap">
+              {% if p.estatus in ('pendiente', 'comprado') %}
+              <!-- Avanzar -->
+              <form method="POST" action="{{ url_for('pedidos.avanzar', id=p.id) }}"
+                    class="d-inline"
+                    onsubmit="return confirm('{% if p.estatus == 'comprado' %}¿Marcar como ENTREGADO? Se cargará ${{ "%.0f"|format(p.precio_venta) }} al saldo de {{ p.cliente.nombre }}.{% else %}¿Marcar como comprado?{% endif %}')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="origen" value="lista">
+                <button type="submit"
+                        class="btn btn-sm {% if p.estatus == 'pendiente' %}btn-outline-primary{% else %}btn-outline-success{% endif %} py-0"
+                        title="{% if p.estatus == 'pendiente' %}Marcar comprado{% else %}Marcar entregado{% endif %}">
+                  {% if p.estatus == 'pendiente' %}<i class="bi bi-bag-check"></i>{% else %}<i class="bi bi-check2"></i>{% endif %}
+                </button>
+              </form>
+              <!-- Cancelar -->
+              <button type="button" class="btn btn-outline-danger btn-sm py-0"
+                      title="Cancelar"
+                      data-bs-toggle="modal" data-bs-target="#cancelModal{{ p.id }}">
+                <i class="bi bi-x"></i>
+              </button>
+
+              {% elif p.estatus == 'entregado' %}
+              <!-- Devolver -->
+              <button type="button" class="btn btn-outline-warning btn-sm py-0"
+                      title="Registrar devolución"
+                      data-bs-toggle="modal" data-bs-target="#devolverModal{{ p.id }}">
+                <i class="bi bi-arrow-return-left"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Modal cancelar -->
+          {% if p.estatus in ('pendiente', 'comprado') %}
+          <div class="modal fade" id="cancelModal{{ p.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <form method="POST" action="{{ url_for('pedidos.cancelar', id=p.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="origen" value="lista">
+                  <div class="modal-header">
+                    <h6 class="modal-title">Cancelar pedido</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p class="text-muted small mb-2">{{ p.descripcion }} — {{ p.cliente.nombre }}</p>
+                    <input type="text" name="motivo" class="form-control"
+                           placeholder="Motivo de cancelación (opcional)">
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Cancelar pedido</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Modal devolver -->
+          {% if p.estatus == 'entregado' %}
+          <div class="modal fade" id="devolverModal{{ p.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <form method="POST" action="{{ url_for('pedidos.devolver', id=p.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-arrow-return-left"></i> Registrar devolución</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p class="text-muted small mb-1">
+                      {% if p.codigo_producto %}#{{ p.codigo_producto }} · {% endif %}{{ p.cliente.nombre }}
+                    </p>
+                    <p class="text-danger small fw-semibold mb-3">Se descontarán ${{ "%.0f"|format(p.precio_venta) }} del saldo.</p>
+                    <div class="d-grid gap-2">
+                      <div class="form-check border rounded p-3">
+                        <input class="form-check-input" type="radio" name="tipo" value="devolucion"
+                               id="dev_dev{{ p.id }}" checked
+                               onchange="document.getElementById('nuevaTalla{{ p.id }}').style.display='none'">
+                        <label class="form-check-label fw-semibold" for="dev_dev{{ p.id }}">
+                          Devolución <small class="text-muted fw-normal">— no se repone</small>
+                        </label>
+                      </div>
+                      <div class="form-check border rounded p-3">
+                        <input class="form-check-input" type="radio" name="tipo" value="cambio_talla"
+                               id="dev_talla{{ p.id }}"
+                               onchange="document.getElementById('nuevaTalla{{ p.id }}').style.display='block'">
+                        <label class="form-check-label fw-semibold" for="dev_talla{{ p.id }}">
+                          Cambio por talla <small class="text-muted fw-normal">— se crea nuevo pedido</small>
+                        </label>
+                      </div>
+                      <div id="nuevaTalla{{ p.id }}" style="display:none" class="ps-3">
+                        <label class="form-label small fw-semibold">Nueva talla <span class="text-danger">*</span></label>
+                        <input type="text" name="nueva_talla" class="form-control form-control-sm"
+                               placeholder="Ej: 26">
+                      </div>
+                      <div class="form-check border rounded p-3">
+                        <input class="form-check-input" type="radio" name="tipo" value="cambio_defecto"
+                               id="dev_defecto{{ p.id }}"
+                               onchange="document.getElementById('nuevaTalla{{ p.id }}').style.display='none'">
+                        <label class="form-check-label fw-semibold" for="dev_defecto{{ p.id }}">
+                          Cambio por defecto de fábrica <small class="text-muted fw-normal">— se crea nuevo pedido</small>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Confirmar devolución</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="text-muted small">{{ pedidos|length }} pedido(s) en total</div>
+
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-inbox fs-1"></i>
+  <p class="mt-2">
+    {% if q %}Sin resultados para "{{ q }}".{% else %}Sin pedidos para el filtro seleccionado.{% endif %}
+  </p>
+</div>
+{% endif %}
+{% endblock %}

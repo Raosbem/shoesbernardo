@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{% if cliente %}Editar Cliente{% else %}Nuevo Cliente{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-7 col-lg-5">
+
+    <div class="d-flex align-items-center mb-3 gap-2">
+      <a href="{{ url_for('clientes.lista') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h5 class="fw-bold mb-0">
+        {% if cliente %}Editar: {{ cliente.nombre }}{% else %}Nuevo Cliente{% endif %}
+      </h5>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre completo <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control form-control-lg"
+                   value="{{ cliente.nombre if cliente else '' }}"
+                   placeholder="Nombre del cliente" required autofocus>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Teléfono</label>
+            <input type="tel" name="telefono" class="form-control form-control-lg"
+                   value="{{ cliente.telefono if cliente and cliente.telefono else '' }}"
+                   placeholder="10 dígitos (opcional)">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Dirección / Referencia</label>
+            <textarea name="direccion" class="form-control" rows="2"
+                      placeholder="Colonia, calle u referencia (opcional)">{{ cliente.direccion if cliente and cliente.direccion else '' }}</textarea>
+          </div>
+
+          {% if not cliente %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Saldo inicial</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" name="saldo_inicial" class="form-control form-control-lg"
+                     placeholder="0" min="0" step="1" value="0">
+            </div>
+            <div class="form-text">Si el cliente ya tiene una deuda previa, ingrésala aquí.</div>
+          </div>
+          {% endif %}
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-dark btn-lg">
+              <i class="bi bi-check-lg"></i>
+              {% if cliente %}Guardar cambios{% else %}Registrar cliente{% endif %}
+            </button>
+            <a href="{{ url_for('clientes.lista') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

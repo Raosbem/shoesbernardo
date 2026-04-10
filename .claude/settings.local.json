@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python seed.py)",
+      "Bash(python -m pip install flask flask-login flask-sqlalchemy flask-wtf werkzeug python-dotenv -q)",
+      "Bash(python -c \"from app import create_app, db; app = create_app\\(\\); app.app_context\\(\\).push\\(\\); db.create_all\\(\\); print\\('Tablas actualizadas OK'\\)\")"
+    ]
+  }
+}

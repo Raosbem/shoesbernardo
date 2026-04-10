@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Calzado Bernardo{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .navbar-brand { font-weight: 700; letter-spacing: .5px; }
+    .nav-link { font-size: 1rem; padding: .6rem 1rem !important; }
+    .badge-saldo { font-size: .75rem; }
+    /* Estatus colores */
+    .estatus-pendiente  { background-color: #ffc107 !important; color: #000 !important; }
+    .estatus-comprado   { background-color: #0d6efd !important; color: #fff !important; }
+    .estatus-entregado  { background-color: #198754 !important; color: #fff !important; }
+    .estatus-cancelado  { background-color: #dc3545 !important; color: #fff !important; }
+    .estatus-devuelto   { background-color: #6f42c1 !important; color: #fff !important; }
+    /* Móvil: botones grandes */
+    @media (max-width: 768px) {
+      .btn { padding: .55rem 1rem; font-size: 1rem; }
+      .form-control, .form-select { font-size: 1rem; padding: .55rem .75rem; }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
+      <i class="bi bi-shoe"></i> Calzado
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('dashboard.index') }}">
+            <i class="bi bi-speedometer2"></i> Inicio
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'clientes' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('clientes.lista') }}">
+            <i class="bi bi-people"></i> Clientes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'pedidos' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('pedidos.lista') }}">
+            <i class="bi bi-bag"></i> Pedidos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'abonos' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('abonos.nuevo') }}">
+            <i class="bi bi-cash-coin"></i> Abonar
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'sucursales' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('sucursales.lista') }}">
+            <i class="bi bi-shop"></i> Sucursales
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint and 'reportes' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('reportes.index') }}">
+            <i class="bi bi-file-earmark-bar-graph"></i> Reportes
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i> {{ current_user.nombre }}
+            <span class="badge bg-secondary ms-1">{{ current_user.rol }}</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if current_user.rol == 'admin' %}
+            <li>
+              <a class="dropdown-item" href="{{ url_for('clientes.zapaterias') }}">
+                <i class="bi bi-building"></i> Zapaterías
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            {% endif %}
+            <li>
+              <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<div class="container-fluid py-3 px-3 px-md-4">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

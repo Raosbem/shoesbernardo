@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}{{ cliente.nombre }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('clientes.lista') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="fw-bold mb-0">{{ cliente.nombre }}</h5>
+</div>
+
+<div class="row g-3">
+
+  <!-- Tarjeta de info + saldo -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="text-center mb-3">
+          <div class="fs-1 fw-bold {% if cliente.saldo > 0 %}text-danger{% else %}text-success{% endif %}">
+            ${{ "%.0f"|format(cliente.saldo) }}
+          </div>
+          <div class="text-muted small">Saldo pendiente</div>
+        </div>
+        <hr>
+        {% if cliente.telefono %}
+        <p class="mb-1"><i class="bi bi-phone text-muted"></i> {{ cliente.telefono }}</p>
+        {% endif %}
+        {% if cliente.direccion %}
+        <p class="mb-1"><i class="bi bi-geo-alt text-muted"></i> {{ cliente.direccion }}</p>
+        {% endif %}
+        <p class="mb-1 text-muted small">
+          <i class="bi bi-calendar"></i>
+          Cliente desde {{ cliente.fecha_registro.strftime('%d/%m/%Y') }}
+        </p>
+        <hr>
+        <div class="row text-center g-2">
+          <div class="col-6">
+            <div class="fw-bold text-success">${{ "%.0f"|format(total_abonado) }}</div>
+            <div class="text-muted" style="font-size:.75rem">Total abonado</div>
+          </div>
+          <div class="col-6">
+            <div class="fw-bold text-primary">${{ "%.0f"|format(total_comprado) }}</div>
+            <div class="text-muted" style="font-size:.75rem">Total comprado</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-white d-grid gap-2">
+        <a href="{{ url_for('abonos.nuevo', cliente_id=cliente.id) }}"
+           class="btn btn-success">
+          <i class="bi bi-cash-coin"></i> Registrar Abono
+        </a>
+        <a href="{{ url_for('pedidos.nuevo', cliente_id=cliente.id) }}"
+           class="btn btn-primary">
+          <i class="bi bi-bag-plus"></i> Nuevo Pedido
+        </a>
+        <a href="{{ url_for('clientes.editar', id=cliente.id) }}"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-pencil"></i> Editar datos
+        </a>
+        {% if current_user.rol == 'admin' %}
+        <form method="POST" action="{{ url_for('clientes.desactivar', id=cliente.id) }}"
+              onsubmit="return confirm('¿Desactivar a {{ cliente.nombre }}?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+            <i class="bi bi-person-x"></i> Desactivar
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Historial -->
+  <div class="col-12 col-md-8">
+
+    <!-- Abonos recientes -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cash text-success"></i> Últimos abonos</span>
+        <a href="{{ url_for('abonos.nuevo', cliente_id=cliente.id) }}"
+           class="btn btn-success btn-sm">
+          <i class="bi bi-plus"></i> Abonar
+        </a>
+      </div>
+      {% if abonos %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha</th>
+              <th class="text-end">Monto</th>
+              <th>Nota</th>
+              <th>Registró</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in abonos %}
+            <tr>
+              <td class="text-nowrap text-muted small">{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="text-end fw-semibold text-success">${{ "%.0f"|format(a.monto) }}</td>
+              <td class="text-muted small">{{ a.notas or '—' }}</td>
+              <td class="text-muted small">{{ a.usuario.nombre }}</td>
+              <td>
+                <form method="POST"
+                      action="{{ url_for('abonos.eliminar', id=a.id) }}"
+                      onsubmit="return confirm('¿Eliminar abono de ${{ "%.0f"|format(a.monto) }}? Se revertirá al saldo.')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="origen" value="detalle">
+                  <button type="submit" class="btn btn-outline-danger btn-sm py-0">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-muted text-center small py-3">Sin abonos registrados.</div>
+      {% endif %}
+    </div>
+
+    <!-- Cargos manuales -->
+    {% if cargos %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-dash-circle text-danger"></i> Cargos manuales
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha</th>
+              <th class="text-end">Monto</th>
+              <th>Descripción</th>
+              <th>Registró</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in cargos %}
+            <tr>
+              <td class="text-nowrap text-muted small">{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="text-end fw-semibold text-danger">${{ "%.0f"|format(c.monto) }}</td>
+              <td class="small">{{ c.descripcion }}</td>
+              <td class="text-muted small">{{ c.usuario.nombre }}</td>
+              <td>
+                <form method="POST"
+                      action="{{ url_for('clientes.eliminar_cargo', cliente_id=cliente.id, cargo_id=c.id) }}"
+                      onsubmit="return confirm('¿Eliminar cargo de ${{ "%.0f"|format(c.monto) }}? Se descontará del saldo.')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-outline-danger btn-sm py-0">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Pedidos recientes -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bag text-primary"></i> Últimos pedidos</span>
+        <a href="{{ url_for('pedidos.nuevo', cliente_id=cliente.id) }}"
+           class="btn btn-primary btn-sm">
+          <i class="bi bi-plus"></i> Pedido
+        </a>
+      </div>
+      {% if pedidos %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha</th>
+              <th>Producto</th>
+              <th>Zapatería</th>
+              <th class="text-end">Precio</th>
+              <th>Estatus</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+            <tr>
+              <td class="text-nowrap">{{ p.fecha_pedido.strftime('%d/%m/%Y') }}</td>
+              <td>
+                <a href="{{ url_for('pedidos.detalle', id=p.id) }}" class="text-decoration-none text-dark fw-semibold">
+                  {% if p.codigo_producto %}#{{ p.codigo_producto }}{% endif %}
+                  {% if p.talla %}<span class="badge bg-secondary ms-1">T{{ p.talla }}</span>{% endif %}
+                </a>
+                {% if p.descripcion %}<div class="text-muted" style="font-size:.75rem">{{ p.descripcion[:30] }}</div>{% endif %}
+              </td>
+              <td class="text-muted small">{{ p.zapateria.nombre }}</td>
+              <td class="text-end">${{ "%.0f"|format(p.precio_venta) }}</td>
+              <td><span class="badge estatus-{{ p.estatus }}">{{ p.estatus }}</span></td>
+              <td>
+                {% if p.estatus == 'entregado' %}
+                <button type="button" class="btn btn-outline-warning btn-sm py-0"
+                        title="Registrar devolución"
+                        data-bs-toggle="modal" data-bs-target="#devolverModalCliente{{ p.id }}">
+                  <i class="bi bi-arrow-return-left"></i>
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+
+            <!-- Modal devolución desde ficha cliente -->
+            {% if p.estatus == 'entregado' %}
+            <div class="modal fade" id="devolverModalCliente{{ p.id }}" tabindex="-1">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <form method="POST" action="{{ url_for('pedidos.devolver', id=p.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="origen" value="cliente">
+                    <div class="modal-header">
+                      <h6 class="modal-title"><i class="bi bi-arrow-return-left"></i> Registrar devolución</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p class="text-muted small mb-1">
+                        {% if p.codigo_producto %}#{{ p.codigo_producto }} · {% endif %}{{ p.zapateria.nombre }}
+                      </p>
+                      <p class="text-danger small fw-semibold mb-3">Se descontarán ${{ "%.0f"|format(p.precio_venta) }} del saldo.</p>
+                      <div class="d-grid gap-2">
+                        <div class="form-check border rounded p-3">
+                          <input class="form-check-input" type="radio" name="tipo" value="devolucion"
+                                 id="cdev_dev{{ p.id }}" checked
+                                 onchange="document.getElementById('cNuevaTalla{{ p.id }}').style.display='none'">
+                          <label class="form-check-label fw-semibold" for="cdev_dev{{ p.id }}">
+                            Devolución <small class="text-muted fw-normal">— no se repone</small>
+                          </label>
+                        </div>
+                        <div class="form-check border rounded p-3">
+                          <input class="form-check-input" type="radio" name="tipo" value="cambio_talla"
+                                 id="cdev_talla{{ p.id }}"
+                                 onchange="document.getElementById('cNuevaTalla{{ p.id }}').style.display='block'">
+                          <label class="form-check-label fw-semibold" for="cdev_talla{{ p.id }}">
+                            Cambio por talla <small class="text-muted fw-normal">— se crea nuevo pedido</small>
+                          </label>
+                        </div>
+                        <div id="cNuevaTalla{{ p.id }}" style="display:none" class="ps-3">
+                          <label class="form-label small fw-semibold">Nueva talla <span class="text-danger">*</span></label>
+                          <input type="text" name="nueva_talla" class="form-control form-control-sm" placeholder="Ej: 26">
+                        </div>
+                        <div class="form-check border rounded p-3">
+                          <input class="form-check-input" type="radio" name="tipo" value="cambio_defecto"
+                                 id="cdev_defecto{{ p.id }}"
+                                 onchange="document.getElementById('cNuevaTalla{{ p.id }}').style.display='none'">
+                          <label class="form-check-label fw-semibold" for="cdev_defecto{{ p.id }}">
+                            Cambio por defecto de fábrica <small class="text-muted fw-normal">— se crea nuevo pedido</small>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                      <button type="submit" class="btn btn-warning btn-sm">Confirmar devolución</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-muted text-center small py-3">Sin pedidos registrados.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

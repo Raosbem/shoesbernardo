@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Inicio — Calzado Bernardo{% endblock %}
+
+{% block content %}
+<h5 class="fw-bold mb-3">
+  <i class="bi bi-speedometer2"></i> Resumen del día
+  <small class="text-muted fw-normal fs-6 ms-2">{{ hoy.strftime('%A %d/%m/%Y') }}</small>
+</h5>
+
+<!-- Métricas principales -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-success">${{ "%.0f"|format(abonos_hoy) }}</div>
+        <div class="small text-muted">Cobrado hoy</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">${{ "%.0f"|format(abonos_semana) }}</div>
+        <div class="small text-muted">Cobrado esta semana</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-warning">{{ pedidos_pendientes }}</div>
+        <div class="small text-muted">Pedidos pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-danger">${{ "%.0f"|format(deuda_total) }}</div>
+        <div class="small text-muted">Deuda total ({{ clientes_con_deuda }} clientes)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold" style="color:#0dcaf0">${{ "%.0f"|format(ventas_semana) }}</div>
+        <div class="small text-muted">Vendido esta semana</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Accesos rápidos -->
+<div class="row g-2 mb-4">
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('abonos.nuevo') }}" class="btn btn-success w-100 py-3">
+      <i class="bi bi-cash-coin d-block fs-4 mb-1"></i>
+      Registrar Abono
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('pedidos.nuevo') }}" class="btn btn-primary w-100 py-3">
+      <i class="bi bi-bag-plus d-block fs-4 mb-1"></i>
+      Nuevo Pedido
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('clientes.lista') }}" class="btn btn-outline-dark w-100 py-3">
+      <i class="bi bi-people d-block fs-4 mb-1"></i>
+      Clientes
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('pedidos.lista') }}" class="btn btn-outline-dark w-100 py-3">
+      <i class="bi bi-bag d-block fs-4 mb-1"></i>
+      Ver Pedidos
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Últimos abonos del día -->
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold border-bottom">
+        <i class="bi bi-cash text-success"></i> Abonos de hoy
+      </div>
+      <div class="card-body p-0">
+        {% if ultimos_abonos %}
+        <ul class="list-group list-group-flush">
+          {% for a in ultimos_abonos %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <div>
+              <span class="fw-semibold">{{ a.cliente.nombre }}</span>
+              <small class="text-muted d-block">{{ a.fecha.strftime('%H:%M') }} — {{ a.notas or '' }}</small>
+            </div>
+            <span class="badge bg-success">${{ "%.0f"|format(a.monto) }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center py-3 mb-0 small">Sin abonos registrados hoy.</p>
+        {% endif %}
+      </div>
+      {% if ultimos_abonos %}
+      <div class="card-footer bg-white text-end">
+        <a href="{{ url_for('abonos.historial') }}" class="small text-decoration-none">Ver todos →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Últimos pedidos pendientes -->
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold border-bottom">
+        <i class="bi bi-bag text-warning"></i> Pedidos pendientes
+      </div>
+      <div class="card-body p-0">
+        {% if ultimos_pedidos %}
+        <ul class="list-group list-group-flush">
+          {% for p in ultimos_pedidos %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <div>
+              <span class="fw-semibold">{{ p.cliente.nombre }}</span>
+              <small class="text-muted d-block">{{ p.descripcion[:40] }} — {{ p.zapateria.nombre }}</small>
+            </div>
+            <span class="badge estatus-{{ p.estatus }}">${{ "%.0f"|format(p.precio_venta) }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center py-3 mb-0 small">Sin pedidos pendientes.</p>
+        {% endif %}
+      </div>
+      {% if ultimos_pedidos %}
+      <div class="card-footer bg-white text-end">
+        <a href="{{ url_for('pedidos.lista') }}" class="small text-decoration-none">Ver todos →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

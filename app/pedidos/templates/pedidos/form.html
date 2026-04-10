@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}{% if pedido %}Editar Pedido{% else %}Nuevo Pedido{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('pedidos.lista') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="fw-bold mb-0">
+    {% if pedido %}Editar Pedido{% else %}Nuevo Pedido{% endif %}
+  </h5>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Cliente (solo en nuevo) -->
+          {% if not pedido %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
+            <select name="cliente_id" class="form-select" required>
+              <option value="">Selecciona un cliente</option>
+              {% for c in clientes %}
+              <option value="{{ c.id }}"
+                {% if cliente_presel and cliente_presel.id == c.id %}selected
+                {% elif form_data and form_data.get('cliente_id')|int == c.id %}selected
+                {% endif %}>
+                {{ c.nombre }}
+                {% if c.saldo > 0 %} — ${{ "%.0f"|format(c.saldo) }} pendiente{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted small">Cliente</label>
+            <p class="fw-semibold mb-0">{{ pedido.cliente.nombre }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Zapatería -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Zapatería <span class="text-danger">*</span></label>
+            <select name="zapateria_id" class="form-select" required>
+              <option value="">Selecciona una zapatería</option>
+              {% for z in zapaterias %}
+              <option value="{{ z.id }}"
+                {% if pedido and pedido.zapateria_id == z.id %}selected
+                {% elif form_data and form_data.get('zapateria_id')|int == z.id %}selected
+                {% endif %}>
+                {{ z.nombre }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Código, color, talla en una fila -->
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label fw-semibold small">Código <span class="text-danger">*</span></label>
+              <input type="text" name="codigo" class="form-control"
+                     value="{{ pedido.codigo_producto if pedido and pedido.codigo_producto else (form_data.get('codigo', '') if form_data else '') }}"
+                     placeholder="Ej: 12345" required autofocus>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold small">Talla</label>
+              <input type="text" name="talla" class="form-control"
+                     value="{{ pedido.talla if pedido and pedido.talla else (form_data.get('talla', '') if form_data else '') }}"
+                     placeholder="Ej: 25">
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold small">Color</label>
+              <input type="text" name="color" class="form-control"
+                     value="{{ pedido.color if pedido and pedido.color else (form_data.get('color', '') if form_data else '') }}"
+                     placeholder="Ej: Negro">
+            </div>
+          </div>
+
+          <!-- Precios -->
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold small">Precio catálogo <span class="text-muted">(opcional)</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="precio_catalogo" class="form-control"
+                       value="{{ pedido.precio_catalogo if pedido and pedido.precio_catalogo else (form_data.get('precio_catalogo', '') if form_data else '') }}"
+                       placeholder="0" min="0" step="1">
+              </div>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold small">Precio de venta <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="precio_venta" class="form-control"
+                       value="{{ pedido.precio_venta if pedido else (form_data.get('precio_venta', '') if form_data else '') }}"
+                       placeholder="0" min="1" step="1" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Descripción <span class="text-muted">(opcional)</span></label>
+            <input type="text" name="descripcion" class="form-control"
+                   value="{{ pedido.descripcion if pedido else (form_data.get('descripcion', '') if form_data else '') }}"
+                   placeholder="Ej: Botín negro mujer">
+          </div>
+
+          <!-- Notas -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Notas <span class="text-muted">(opcional)</span></label>
+            <textarea name="notas" class="form-control" rows="2"
+                      placeholder="Indicaciones especiales, encargos, etc.">{{ pedido.notas if pedido and pedido.notas else (form_data.get('notas', '') if form_data else '') }}</textarea>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-dark btn-lg">
+              <i class="bi bi-check-lg"></i>
+              {% if pedido %}Guardar cambios{% else %}Registrar pedido{% endif %}
+            </button>
+            <a href="{{ url_for('pedidos.detalle', id=pedido.id) if pedido else url_for('pedidos.lista') }}"
+               class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

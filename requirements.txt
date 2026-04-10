@@ -1,0 +1,10 @@
+flask
+flask-login
+flask-sqlalchemy
+flask-wtf
+werkzeug
+psycopg2-binary
+openpyxl
+xhtml2pdf
+python-dotenv
+gunicorn

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Pedidos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0"><i class="bi bi-bag"></i> Pedidos</h5>
+  <a href="{{ url_for('pedidos.nuevo') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus"></i> Nuevo
+  </a>
+</div>
+
+<!-- Buscador por código -->
+<form method="GET" action="{{ url_for('pedidos.lista') }}" class="mb-4">
+  <div class="input-group">
+    <span class="input-group-text bg-white border-end-0">
+      <i class="bi bi-search text-muted"></i>
+    </span>
+    <input type="text" name="q" class="form-control border-start-0 ps-0"
+           placeholder="Buscar por código de producto…"
+           autofocus>
+    <button type="submit" class="btn btn-dark px-3">Buscar</button>
+  </div>
+</form>
+
+<!-- Tarjetas por zapatería -->
+<div class="row g-3">
+  {% for z in zapaterias %}
+  <div class="col-6 col-md-4 col-lg-3">
+    <a href="{{ url_for('pedidos.lista', zapateria_id=z.id) }}"
+       class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 {% if conteos[z.id] > 0 %}border-start border-4 border-primary{% endif %}"
+           style="{% if conteos[z.id] > 0 %}border-left: 4px solid #0d6efd !important;{% endif %}">
+        <div class="card-body d-flex flex-column justify-content-between py-3">
+          <div class="fw-bold text-dark">{{ z.nombre }}</div>
+          <div class="mt-2">
+            {% if conteos[z.id] > 0 %}
+            <span class="badge bg-primary">{{ conteos[z.id] }} activo{% if conteos[z.id] != 1 %}s{% endif %}</span>
+            {% else %}
+            <span class="text-muted small">Sin activos</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-footer bg-white border-0 pt-0 pb-2">
+          <span class="text-muted small">Ver pedidos <i class="bi bi-arrow-right"></i></span>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Ver todos -->
+<div class="text-center mt-4">
+  <a href="{{ url_for('pedidos.lista', ver_todos='1') }}"
+     class="text-muted small text-decoration-none">
+    <i class="bi bi-list-ul"></i> Ver todos los pedidos sin filtro
+  </a>
+</div>
+
+{% endblock %}
