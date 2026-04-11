@@ -25,7 +25,7 @@ Clientes pagan de contado o en abonos. Existen "sucursales" (compradores mayoris
 | DB producción | PostgreSQL (Railway) |
 | Frontend | Bootstrap 5 CDN + Jinja2 templates |
 | Auth | Flask-Login |
-| Reportes | openpyxl (Excel), weasyprint (PDF) |
+| Reportes | xhtml2pdf (PDF) |
 | Deploy | Railway (desde GitHub, sin Docker) |
 
 ---
@@ -116,9 +116,9 @@ Supershoes, Golden Shoes, Pakar, Andrea, Cklass, Price Shoes, BL Shoes
 | 1 | Estructura base + Modelos + Auth | ✅ Completado |
 | 2 | Clientes + Abonos | ✅ Completado |
 | 3 | Pedidos | ✅ Completado |
-| 4 | Sucursales | ⬜ Pendiente |
-| 5 | Reportes (Excel + PDF) | ⬜ Pendiente |
-| 6 | Dashboard con métricas | ⬜ Pendiente |
+| 4 | Sucursales | ✅ Completado |
+| 5 | Reportes (PDF) | ✅ Completado |
+| 6 | Dashboard con métricas | ✅ Completado |
 
 ---
 
@@ -150,3 +150,5 @@ _(Actualizar aquí al final de cada sesión)_
 - Sesión 2 (2026-04-09): Etapa 2 completada — Módulo Clientes (CRUD, ficha, búsqueda, alertas deuda/inactividad, gestión zapaterías) + Módulo Abonos (registro rápido con saldo visible, historial con filtros, descuento automático de saldo).
 - Sesión 3 (2026-04-09): Etapa 3 completada — Módulo Pedidos (lista con tabs activos/pendiente/comprado/entregado/todos, filtros por zapatería y cliente, nuevo pedido, detalle, editar, avanzar estatus pendiente→comprado→entregado, cancelar con motivo). Al entregar se carga automáticamente precio_venta al saldo del cliente. Edición solo permitida en estatus pendiente. Cancelación bloqueada si ya fue entregado. Devoluciones con 3 tipos (simple, cambio talla, cambio defecto). PDF por zapatería con xhtml2pdf.
 - Sesión 4 (2026-04-09): Mejoras al Módulo Pedidos — (1) Navegación en dos niveles: pantalla de selección de zapatería con tarjetas + contador de activos, luego lista filtrada con botón ←. (2) Buscador por código de producto disponible en ambas pantallas (búsqueda parcial, cross-zapatería). (3) Filtro de fechas automático en vistas históricas (entregados/todos/cancelados/devueltos): por defecto "este mes", opciones: semana / mes / trimestre / todo el historial. Template nuevo: `pedidos/seleccion.html`. Parámetro `ver_todos=1` para saltarse la selección.
+- Sesión 5 (2026-04-10): Etapa 4 completada — Módulo Sucursales completo: lista con contador de pendientes, nueva/editar sucursal, ficha con saldo + abono rápido inline + historial de pedidos filtrable por semana + historial de abonos, nuevo pedido (precio base + descuento % → precio final calculado en tiempo real con JS, semana ISO), entregar pedido (carga saldo automáticamente), cancelar pedido. Corrección en abonos.eliminar: redirect a sucursales.detalle cuando origen='sucursal'.
+- Sesión 6 (2026-04-11): Etapa 5 completada — Reportes cambiados de Excel a PDF (xhtml2pdf). Templates: pdf_resumen.html (métricas + pedidos activos) y pdf_abonos.html (historial + total). Etapa 6 completada — Dashboard funcional con 7 métricas, listos para entregar, abonos del día, pedidos pendientes, top deudores, alertas inactividad. Mejora en abonos: selector de cliente reemplazado por buscador con Tom Select (CDN). run.py actualizado con host='0.0.0.0' para acceso desde iPhone en red local. Sucursales (flujo real de tickets) pendiente para próxima etapa — el jefe lo dejó para después.

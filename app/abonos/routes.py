@@ -105,6 +105,8 @@ def eliminar(id):
 
     if origen == 'detalle':
         return redirect(url_for('clientes.detalle', id=cliente.id))
+    if origen == 'sucursal':
+        return redirect(url_for('sucursales.detalle', id=cliente.id))
     return redirect(url_for('abonos.historial'))
 
 

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 24px; }
+
+    .titulo { font-size: 18px; font-weight: bold; color: #1a1a2e; margin-bottom: 2px; }
+    .subtitulo { font-size: 10px; color: #888; margin-bottom: 20px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #1a1a2e; color: #fff; padding: 6px 8px; text-align: left;
+         font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
+    td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    tr:nth-child(even) td { background-color: #f8f8f8; }
+    .text-right { text-align: right; }
+
+    .total-row td {
+      font-weight: bold;
+      background-color: #1a1a2e;
+      color: #fff;
+      border-top: 2px solid #aaa;
+    }
+
+    .sin-datos { color: #999; font-style: italic; margin-top: 12px; }
+    .footer { margin-top: 16px; font-size: 9px; color: #999; text-align: right; }
+  </style>
+</head>
+<body>
+
+  <div class="titulo">Calzado Bernardo — Historial de Abonos</div>
+  <div class="subtitulo">
+    Periodo: {{ fecha_desde.strftime('%d/%m/%Y') }} al {{ fecha_hasta.strftime('%d/%m/%Y') }}
+    &nbsp;·&nbsp; Generado: {{ hoy.strftime('%d/%m/%Y') }}
+  </div>
+
+  {% if abonos %}
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Cliente</th>
+        <th class="text-right">Monto</th>
+        <th>Nota</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in abonos %}
+      <tr>
+        <td>{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ a.cliente.nombre }}</td>
+        <td class="text-right">${{ "%.2f"|format(a.monto) }}</td>
+        <td>{{ a.notas or '—' }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td colspan="2">Total del periodo</td>
+        <td class="text-right">${{ "%.2f"|format(total) }}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <p class="sin-datos">Sin abonos registrados en el periodo seleccionado.</p>
+  {% endif %}
+
+  <div class="footer">Calzado Bernardo · {{ hoy.strftime('%d/%m/%Y') }}</div>
+
+</body>
+</html>

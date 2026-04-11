@@ -1,1 +1,262 @@
-{% extends 'base.html' %}{% block content %}<p class='text-muted p-4'>Módulo en construcción.</p>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ sucursal.nombre }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('sucursales.lista') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="fw-bold mb-0">{{ sucursal.nombre }}</h5>
+  <span class="badge bg-secondary">sucursal</span>
+</div>
+
+<div class="row g-3">
+
+  <!-- Columna izquierda: info + acciones -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="text-center mb-3">
+          <div class="fs-1 fw-bold {% if sucursal.saldo > 0 %}text-danger{% else %}text-success{% endif %}">
+            ${{ "%.0f"|format(sucursal.saldo) }}
+          </div>
+          <div class="text-muted small">Saldo pendiente</div>
+        </div>
+        <hr>
+        {% if sucursal.telefono %}
+        <p class="mb-1"><i class="bi bi-phone text-muted"></i> {{ sucursal.telefono }}</p>
+        {% endif %}
+        {% if sucursal.direccion %}
+        <p class="mb-1"><i class="bi bi-geo-alt text-muted"></i> {{ sucursal.direccion }}</p>
+        {% endif %}
+        <p class="mb-1 text-muted small">
+          <i class="bi bi-calendar"></i>
+          Desde {{ sucursal.fecha_registro.strftime('%d/%m/%Y') }}
+        </p>
+        <hr>
+        <div class="row text-center g-2">
+          <div class="col-6">
+            <div class="fw-bold text-success">${{ "%.0f"|format(total_abonado) }}</div>
+            <div class="text-muted" style="font-size:.75rem">Total abonado</div>
+          </div>
+          <div class="col-6">
+            <div class="fw-bold text-primary">${{ "%.0f"|format(total_entregado) }}</div>
+            <div class="text-muted" style="font-size:.75rem">Total entregado</div>
+          </div>
+        </div>
+        {% if total_pendiente > 0 %}
+        <div class="text-center mt-2">
+          <div class="fw-bold text-warning">${{ "%.0f"|format(total_pendiente) }}</div>
+          <div class="text-muted" style="font-size:.75rem">Pendiente de entregar</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Abono rápido -->
+      {% if sucursal.saldo > 0 %}
+      <div class="card-body border-top pt-3 pb-2">
+        <p class="fw-semibold small mb-2"><i class="bi bi-cash-coin text-success"></i> Registrar abono</p>
+        <form method="POST" action="{{ url_for('sucursales.abonar', id=sucursal.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="input-group mb-2">
+            <span class="input-group-text">$</span>
+            <input type="number" name="monto" class="form-control"
+                   placeholder="Monto" step="0.01" min="1"
+                   max="{{ sucursal.saldo }}" required>
+          </div>
+          <input type="text" name="notas" class="form-control form-control-sm mb-2"
+                 placeholder="Nota (opcional)">
+          <div class="d-grid">
+            <button type="submit" class="btn btn-success btn-sm">
+              <i class="bi bi-check-lg"></i> Abonar
+            </button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      <div class="card-footer bg-white d-grid gap-2">
+        <a href="{{ url_for('sucursales.nuevo_pedido', id=sucursal.id) }}"
+           class="btn btn-primary">
+          <i class="bi bi-bag-plus"></i> Nuevo pedido
+        </a>
+        <a href="{{ url_for('sucursales.editar', id=sucursal.id) }}"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-pencil"></i> Editar datos
+        </a>
+        {% if current_user.rol == 'admin' %}
+        <form method="POST" action="{{ url_for('sucursales.desactivar', id=sucursal.id) }}"
+              onsubmit="return confirm('¿Desactivar a {{ sucursal.nombre }}?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+            <i class="bi bi-shop-window"></i> Desactivar
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna derecha: pedidos + abonos -->
+  <div class="col-12 col-md-8">
+
+    <!-- Pedidos -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="fw-semibold"><i class="bi bi-bag text-primary"></i> Pedidos</span>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Filtro por semana -->
+          <form method="GET" class="d-flex gap-1">
+            <select name="semana" class="form-select form-select-sm" style="width:auto"
+                    onchange="this.form.submit()">
+              <option value="">Todas las semanas</option>
+              <option value="{{ semana_actual }}" {% if semana_filter == semana_actual %}selected{% endif %}>
+                Esta semana ({{ semana_actual }})
+              </option>
+              {% for s in semanas %}
+                {% if s != semana_actual %}
+                <option value="{{ s }}" {% if semana_filter == s %}selected{% endif %}>{{ s }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </form>
+          <a href="{{ url_for('sucursales.nuevo_pedido', id=sucursal.id) }}"
+             class="btn btn-primary btn-sm">
+            <i class="bi bi-plus"></i> Pedido
+          </a>
+        </div>
+      </div>
+
+      {% if pedidos %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Semana</th>
+              <th>Producto</th>
+              <th>Zapatería</th>
+              <th class="text-end">Base</th>
+              <th class="text-center">Dto</th>
+              <th class="text-end">Final</th>
+              <th>Estatus</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+            <tr>
+              <td class="text-muted small text-nowrap">{{ p.semana or '—' }}</td>
+              <td>
+                {% if p.codigo_producto %}
+                  <span class="text-muted small">#{{ p.codigo_producto }}</span>
+                {% endif %}
+                <div class="fw-semibold" style="font-size:.9rem">
+                  {{ p.descripcion[:35] }}{% if p.descripcion|length > 35 %}…{% endif %}
+                </div>
+                {% if p.color or p.talla %}
+                <div style="font-size:.75rem" class="text-muted">
+                  {% if p.color %}{{ p.color }}{% endif %}
+                  {% if p.talla %} · T{{ p.talla }}{% endif %}
+                </div>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ p.zapateria.nombre }}</td>
+              <td class="text-end text-muted small">${{ "%.0f"|format(p.precio_base) }}</td>
+              <td class="text-center">
+                {% if p.descuento > 0 %}
+                  <span class="badge bg-info text-dark">{{ "%.0f"|format(p.descuento) }}%</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end fw-semibold">${{ "%.0f"|format(p.precio_final) }}</td>
+              <td>
+                <span class="badge estatus-{{ p.estatus }}">{{ p.estatus }}</span>
+              </td>
+              <td class="text-nowrap">
+                {% if p.estatus == 'pendiente' %}
+                <form method="POST"
+                      action="{{ url_for('sucursales.entregar_pedido', id=sucursal.id, pedido_id=p.id) }}"
+                      class="d-inline"
+                      onsubmit="return confirm('¿Marcar como entregado? Se cargarán ${{ "%.0f"|format(p.precio_final) }} al saldo.')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-success btn-sm py-0" title="Entregar">
+                    <i class="bi bi-check2"></i>
+                  </button>
+                </form>
+                <form method="POST"
+                      action="{{ url_for('sucursales.cancelar_pedido', id=sucursal.id, pedido_id=p.id) }}"
+                      class="d-inline"
+                      onsubmit="return confirm('¿Cancelar este pedido?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-outline-danger btn-sm py-0" title="Cancelar">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-muted text-center small py-3">
+        {% if semana_filter %}
+          Sin pedidos en la semana {{ semana_filter }}.
+          <a href="{{ url_for('sucursales.detalle', id=sucursal.id) }}">Ver todos</a>
+        {% else %}
+          Sin pedidos registrados.
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Últimos abonos -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-cash text-success"></i> Últimos abonos
+      </div>
+      {% if abonos %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha</th>
+              <th class="text-end">Monto</th>
+              <th>Nota</th>
+              <th>Registró</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in abonos %}
+            <tr>
+              <td class="text-nowrap text-muted small">{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="text-end fw-semibold text-success">${{ "%.0f"|format(a.monto) }}</td>
+              <td class="text-muted small">{{ a.notas or '—' }}</td>
+              <td class="text-muted small">{{ a.usuario.nombre }}</td>
+              <td>
+                <form method="POST"
+                      action="{{ url_for('abonos.eliminar', id=a.id) }}"
+                      onsubmit="return confirm('¿Eliminar abono de ${{ "%.0f"|format(a.monto) }}? Se revertirá al saldo.')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="origen" value="sucursal">
+                  <button type="submit" class="btn btn-outline-danger btn-sm py-0">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-muted text-center small py-3">Sin abonos registrados.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

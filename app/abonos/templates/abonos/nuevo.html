@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Registrar Abono{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-6 col-lg-4">
@@ -17,16 +21,15 @@
         <form method="POST" id="formAbono">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          <!-- Selector de cliente -->
+          <!-- Selector de cliente con búsqueda -->
           <div class="mb-3">
             <label class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
-            <select name="cliente_id" id="selectCliente" class="form-select form-select-lg" required>
-              <option value="">— Seleccionar cliente —</option>
+            <select name="cliente_id" id="selectCliente" class="form-select" required>
+              <option value=""></option>
               {% for c in clientes %}
               <option value="{{ c.id }}"
                 {% if cliente_presel and cliente_presel.id == c.id %}selected{% endif %}>
-                {{ c.nombre }}
-                {% if c.saldo > 0 %}(debe ${{ "%.0f"|format(c.saldo) }}){% endif %}
+                {{ c.nombre }}{% if c.saldo > 0 %} — debe ${{ "%.0f"|format(c.saldo) }}{% endif %}
               </option>
               {% endfor %}
             </select>
@@ -75,27 +78,35 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
-// Datos de saldos para mostrar info al seleccionar cliente
 const saldos = {
   {% for c in clientes %}
   {{ c.id }}: {{ c.saldo }},
   {% endfor %}
 };
 
-document.getElementById('selectCliente').addEventListener('change', function() {
-  const id = parseInt(this.value);
-  const info = document.getElementById('saldoInfo');
+const ts = new TomSelect('#selectCliente', {
+  placeholder: 'Buscar cliente...',
+  allowEmptyOption: true,
+  maxOptions: null,
+});
+
+function actualizarSaldo(id) {
+  const info  = document.getElementById('saldoInfo');
   const valor = document.getElementById('saldoValor');
-  if (id && saldos[id] > 0) {
-    valor.textContent = '$' + Math.round(saldos[id]);
+  const numId = parseInt(id);
+  if (numId && saldos[numId] > 0) {
+    valor.textContent = '$' + Math.round(saldos[numId]);
     info.classList.remove('d-none');
   } else {
     info.classList.add('d-none');
   }
-});
+}
+
+ts.on('change', actualizarSaldo);
 
 // Disparar al cargar si hay cliente preseleccionado
-document.getElementById('selectCliente').dispatchEvent(new Event('change'));
+actualizarSaldo(ts.getValue());
 </script>
 {% endblock %}

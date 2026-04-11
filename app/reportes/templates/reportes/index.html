@@ -1,1 +1,68 @@
-{% extends 'base.html' %}{% block content %}<p class='text-muted p-4'>Módulo en construcción.</p>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+
+{% block content %}
+<h5 class="fw-bold mb-4"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</h5>
+
+<div class="row g-3">
+
+  <!-- Resumen General -->
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100 d-flex flex-column">
+      <div class="card-body flex-grow-1">
+        <h6 class="fw-bold mb-1">
+          <i class="bi bi-clipboard-data text-primary"></i> Resumen General
+        </h6>
+        <p class="text-muted small mb-3">
+          Estado actual del negocio: deuda total, cobros y ventas del mes, pedidos activos.
+        </p>
+        <p class="text-muted small mb-0">
+          <i class="bi bi-calendar-check"></i>
+          Los datos se calculan al momento de exportar.
+        </p>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="{{ url_for('reportes.exportar_resumen') }}"
+           class="btn btn-dark w-100">
+          <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historial de Abonos -->
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100 d-flex flex-column">
+      <form method="GET" action="{{ url_for('reportes.exportar_abonos') }}"
+            class="d-flex flex-column flex-grow-1">
+        <div class="card-body flex-grow-1">
+          <h6 class="fw-bold mb-1">
+            <i class="bi bi-cash-coin text-success"></i> Historial de Abonos
+          </h6>
+          <p class="text-muted small mb-3">
+            Total cobrado en el periodo seleccionado con detalle de cada abono.
+          </p>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold mb-1">Desde</label>
+              <input type="date" name="desde" class="form-control form-control-sm"
+                     value="{{ hoy.replace(day=1).strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold mb-1">Hasta</label>
+              <input type="date" name="hasta" class="form-control form-control-sm"
+                     value="{{ hoy.strftime('%Y-%m-%d') }}">
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-white">
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

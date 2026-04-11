@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if sucursal else 'Nueva' }} Sucursal{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('sucursales.detalle', id=sucursal.id) if sucursal else url_for('sucursales.lista') }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="fw-bold mb-0">
+    {{ 'Editar sucursal' if sucursal else 'Nueva sucursal' }}
+  </h5>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width:480px">
+  <div class="card-body">
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">
+          Nombre <span class="text-danger">*</span>
+        </label>
+        <input type="text" name="nombre" class="form-control"
+               value="{{ sucursal.nombre if sucursal else '' }}"
+               placeholder="Ej: Sucursal Norte" autofocus required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Teléfono</label>
+        <input type="text" name="telefono" class="form-control"
+               value="{{ sucursal.telefono or '' if sucursal else '' }}"
+               placeholder="Opcional">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Dirección / Notas</label>
+        <input type="text" name="direccion" class="form-control"
+               value="{{ sucursal.direccion or '' if sucursal else '' }}"
+               placeholder="Opcional">
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-dark">
+          <i class="bi bi-check-lg"></i>
+          {{ 'Guardar cambios' if sucursal else 'Registrar sucursal' }}
+        </button>
+        <a href="{{ url_for('sucursales.detalle', id=sucursal.id) if sucursal else url_for('sucursales.lista') }}"
+           class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

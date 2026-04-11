@@ -1,1 +1,118 @@
-{% extends 'base.html' %}{% block content %}<p class='text-muted p-4'>Módulo en construcción.</p>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Nuevo pedido — {{ sucursal.nombre }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('sucursales.detalle', id=sucursal.id) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h5 class="fw-bold mb-0">Nuevo pedido — {{ sucursal.nombre }}</h5>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width:560px">
+  <div class="card-body">
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">
+          Zapatería <span class="text-danger">*</span>
+        </label>
+        <select name="zapateria_id" class="form-select" required>
+          <option value="">— Seleccionar —</option>
+          {% for z in zapaterias %}
+          <option value="{{ z.id }}">{{ z.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-semibold">Código de producto</label>
+          <input type="text" name="codigo_producto" class="form-control"
+                 placeholder="Opcional">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-semibold">Semana</label>
+          <input type="text" name="semana" class="form-control"
+                 value="{{ semana_actual }}"
+                 placeholder="{{ semana_actual }}">
+          <div class="form-text">Formato ISO: AAAA-Wnn</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">
+          Descripción <span class="text-danger">*</span>
+        </label>
+        <input type="text" name="descripcion" class="form-control"
+               placeholder="Ej: Bota dama piel café" required>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-semibold">Color</label>
+          <input type="text" name="color" class="form-control" placeholder="Opcional">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-semibold">Talla</label>
+          <input type="text" name="talla" class="form-control" placeholder="Ej: 26">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label fw-semibold">
+            Precio base <span class="text-danger">*</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="number" name="precio_base" id="precioBase"
+                   class="form-control" step="0.01" min="0.01"
+                   placeholder="0.00" required
+                   oninput="calcularFinal()">
+          </div>
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-semibold">Descuento %</label>
+          <div class="input-group">
+            <input type="number" name="descuento" id="descuento"
+                   class="form-control" step="0.1" min="0" max="99"
+                   value="0" oninput="calcularFinal()">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-semibold text-success">Precio final</label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="text" id="precioFinalDisplay" class="form-control bg-light fw-bold"
+                   readonly placeholder="—">
+          </div>
+        </div>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-dark">
+          <i class="bi bi-bag-plus"></i> Registrar pedido
+        </button>
+        <a href="{{ url_for('sucursales.detalle', id=sucursal.id) }}"
+           class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calcularFinal() {
+  const base = parseFloat(document.getElementById('precioBase').value) || 0;
+  const dto  = parseFloat(document.getElementById('descuento').value) || 0;
+  const final = base * (1 - dto / 100);
+  document.getElementById('precioFinalDisplay').value =
+    final > 0 ? final.toFixed(2) : '';
+}
+</script>
+{% endblock %}
