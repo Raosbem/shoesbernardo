@@ -57,7 +57,7 @@
         </div>
         <div class="text-end">
           {% if c.saldo > 0 %}
-            <span class="badge bg-danger fs-6">${{ "%.0f"|format(c.saldo) }}</span>
+            <span class="badge bg-danger fs-6">${{ "%.2f"|format(c.saldo) }}</span>
           {% else %}
             <span class="badge bg-success">Al corriente</span>
           {% endif %}

@@ -30,7 +30,7 @@
 {% if current_user.is_authenticated %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
+    <a class="navbar-brand" href="{{ url_for('portal.inicio' if current_user.rol == 'sucursal' else 'dashboard.index') }}">
       <i class="bi bi-shoe"></i> Calzado
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
@@ -38,6 +38,11 @@
     </button>
     <div class="collapse navbar-collapse" id="navMain">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% if current_user.rol == 'sucursal' %}
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('portal.inicio') }}">Mis pedidos</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('portal.tickets') }}">Mis tickets</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('portal.vales') }}">Mis vales</a></li>
+        {% else %}
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}"
              href="{{ url_for('dashboard.index') }}">
@@ -52,7 +57,7 @@
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint and 'pedidos' in request.endpoint %}active{% endif %}"
-             href="{{ url_for('pedidos.lista') }}">
+             href="{{ url_for('pedidos.bandeja') }}">
             <i class="bi bi-bag"></i> Pedidos
           </a>
         </li>
@@ -74,6 +79,7 @@
             <i class="bi bi-file-earmark-bar-graph"></i> Reportes
           </a>
         </li>
+        {% endif %}
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item dropdown">
@@ -91,9 +97,11 @@
             <li><hr class="dropdown-divider"></li>
             {% endif %}
             <li>
-              <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
-                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-              </a>
+              <a class="dropdown-item" href="{{ url_for('auth.password') }}">Cambiar contraseña</a>
+              <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="dropdown-item text-danger" type="submit">Cerrar sesión</button>
+              </form>
             </li>
           </ul>
         </li>

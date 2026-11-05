@@ -1,0 +1,9 @@
+<p class="text-muted">El vale se genera al recibir y aceptar el producto. No incluye comisión y se descuenta en una próxima entrega; no modifica otra vez el ticket original.</p>
+{% for d in devoluciones %}<div class="card card-body mb-3">
+<div class="d-flex flex-wrap gap-2 justify-content-between"><strong>{{ d.sucursal.nombre }} · {{ d.pedido.codigo_producto }}</strong><span class="badge bg-{{ 'warning text-dark' if d.estado == 'solicitada' else ('success' if d.estado == 'aprobada' else 'secondary') }}">{{ {'solicitada':'Pendiente de recepción','aprobada':'Vale generado','rechazada':'Rechazada'}.get(d.estado, d.estado) }}</span></div>
+<div>{{ d.pedido.zapateria.nombre }} · Talla {{ d.pedido.talla or '—' }} · {{ d.pedido.color or '' }}</div><p class="my-2">Motivo: {{ d.motivo }}</p><small>{{ (d.fecha|localtime).strftime('%d/%m/%Y %H:%M') }}</small>
+{% if d.respuesta %}<p class="mb-0 mt-2">Respuesta: {{ d.respuesta }}</p>{% endif %}
+{% if d.vale %}<strong class="text-success mt-2">{{ d.vale.folio }} · ${{ '%.2f'|format(d.vale.monto) }}</strong>{% endif %}
+{% if not portal and current_user.rol == 'admin' and d.estado == 'solicitada' %}
+<form class="mt-3" method="post" action="{{ url_for('sucursales.resolver', id=d.id) }}" onsubmit="return confirm('¿Confirmar la resolución de esta devolución?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="respuesta-{{ d.id }}" class="form-label">Nota / motivo de rechazo</label><input id="respuesta-{{ d.id }}" name="respuesta" maxlength="200" class="form-control mb-2"><div class="d-flex flex-wrap gap-2"><button class="btn btn-success" name="accion" value="aprobar">Ya recibí el producto: generar vale</button><button class="btn btn-outline-danger" name="accion" value="rechazar">Rechazar devolución</button></div></form>
+{% endif %}</div>{% else %}<div class="card card-body text-muted">No hay devoluciones solicitadas.</div>{% endfor %}

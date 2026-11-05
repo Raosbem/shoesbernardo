@@ -1,9 +1,10 @@
+from app.utils import money, today, utc_start, day_range
 from flask import Blueprint, render_template
 from flask_login import login_required
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app import db
-from app.models import Cliente, Pedido, Abono, Cuenta, Cargo
+from app.models import PedidoSucursal, Cliente, Pedido, Abono, Cuenta, Cargo, TicketSucursal
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='',
                          template_folder='templates')
@@ -12,52 +13,66 @@ dashboard_bp = Blueprint('dashboard', __name__, url_prefix='',
 @dashboard_bp.route('/')
 @login_required
 def index():
-    hoy = date.today()
+    hoy = today()
     inicio_semana = hoy - timedelta(days=hoy.weekday())   # lunes
     inicio_mes = hoy.replace(day=1)
 
     # --- Cobros ---
     abonos_hoy = db.session.query(func.sum(Abono.monto)).filter(
-        func.date(Abono.fecha) == hoy
-    ).scalar() or 0.0
+        Abono.anulado == False,
+        Abono.fecha >= day_range(hoy)[0], Abono.fecha < day_range(hoy)[1]
+    ).scalar() or money(0)
 
     abonos_semana = db.session.query(func.sum(Abono.monto)).filter(
-        Abono.fecha >= inicio_semana
-    ).scalar() or 0.0
+        Abono.anulado == False,
+        Abono.fecha >= utc_start(inicio_semana)
+    ).scalar() or money(0)
 
     # --- Ventas (entregados) ---
     ventas_semana = db.session.query(func.sum(Pedido.precio_venta)).filter(
         Pedido.estatus == 'entregado',
-        Pedido.fecha_entrega >= inicio_semana
-    ).scalar() or 0.0
+        Pedido.fecha_entrega >= utc_start(inicio_semana)
+    ).scalar() or money(0)
 
     ventas_mes = db.session.query(func.sum(Pedido.precio_venta)).filter(
         Pedido.estatus == 'entregado',
-        Pedido.fecha_entrega >= inicio_mes
-    ).scalar() or 0.0
+        Pedido.fecha_entrega >= utc_start(inicio_mes)
+    ).scalar() or money(0)
+
+    ventas_semana += db.session.query(func.sum(PedidoSucursal.precio_final)).filter(PedidoSucursal.estatus == 'entregado', PedidoSucursal.fecha_entrega >= utc_start(inicio_semana)).scalar() or money(0)
+    ventas_mes += db.session.query(func.sum(PedidoSucursal.precio_final)).filter(PedidoSucursal.estatus == 'entregado', PedidoSucursal.fecha_entrega >= utc_start(inicio_mes)).scalar() or money(0)
+    comisiones_mes = db.session.query(func.sum(TicketSucursal.comision)).filter(
+        TicketSucursal.estado == 'confirmado', TicketSucursal.fecha_confirmacion >= utc_start(inicio_mes)
+    ).scalar() or money(0)
 
     # --- Pedidos por estatus ---
-    pedidos_pendientes = Pedido.query.filter_by(estatus='pendiente').count()
-    pedidos_comprados  = Pedido.query.filter_by(estatus='comprado').count()
+    pedidos_pendientes = Pedido.query.filter_by(estatus='pendiente').count() + PedidoSucursal.query.filter_by(estatus='pendiente').count()
+    pedidos_comprados  = Pedido.query.filter_by(estatus='comprado').count() + PedidoSucursal.query.filter_by(estatus='recibido').count()
 
     # --- Deuda total ---
     deuda_total = db.session.query(func.sum(Cuenta.saldo_total)).filter(
         Cuenta.saldo_total > 0
-    ).scalar() or 0.0
+    ).scalar() or money(0)
     clientes_con_deuda = Cuenta.query.filter(Cuenta.saldo_total > 0).count()
 
     # --- Últimos 5 abonos del día ---
     ultimos_abonos = Abono.query.filter(
-        func.date(Abono.fecha) == hoy
+        Abono.anulado == False,
+        Abono.fecha >= day_range(hoy)[0], Abono.fecha < day_range(hoy)[1]
     ).order_by(Abono.fecha.desc()).limit(5).all()
 
     # --- Pedidos pendientes (últimos 5) ---
     ultimos_pedidos = Pedido.query.filter_by(estatus='pendiente')\
         .order_by(Pedido.fecha_pedido.desc()).limit(5).all()
 
+    ultimos_pedidos += PedidoSucursal.query.filter_by(estatus='pendiente').order_by(PedidoSucursal.fecha_pedido.desc()).limit(5).all()
+    ultimos_pedidos = sorted(ultimos_pedidos, key=lambda p: p.fecha_pedido, reverse=True)[:5]
+
     # --- Pedidos comprados (listos para entregar) — todos ---
     lista_comprados = Pedido.query.filter_by(estatus='comprado')\
         .order_by(Pedido.fecha_pedido.asc()).all()
+    lista_comprados += PedidoSucursal.query.filter_by(estatus='recibido').order_by(PedidoSucursal.fecha_pedido).all()
+    lista_comprados.sort(key=lambda p: p.fecha_pedido)
 
     # --- Top 5 deudores ---
     top_deudores = db.session.query(Cliente, Cuenta)\
@@ -73,7 +88,7 @@ def index():
     ultimo_abono_sq = db.session.query(
         Abono.cliente_id,
         func.max(Abono.fecha).label('ultimo')
-    ).group_by(Abono.cliente_id).subquery()
+    ).filter(Abono.anulado == False).group_by(Abono.cliente_id).subquery()
 
     alertas = db.session.query(Cliente, Cuenta)\
         .join(Cuenta, Cliente.id == Cuenta.cliente_id)\
@@ -84,7 +99,7 @@ def index():
             Cliente.es_sucursal == False,
             db.or_(
                 ultimo_abono_sq.c.ultimo == None,
-                ultimo_abono_sq.c.ultimo < limite_inactividad
+                ultimo_abono_sq.c.ultimo < utc_start(limite_inactividad)
             )
         ).order_by(Cuenta.saldo_total.desc()).limit(8).all()
 
@@ -94,6 +109,7 @@ def index():
                            abonos_semana=abonos_semana,
                            ventas_semana=ventas_semana,
                            ventas_mes=ventas_mes,
+                           comisiones_mes=comisiones_mes,
                            pedidos_pendientes=pedidos_pendientes,
                            pedidos_comprados=pedidos_comprados,
                            deuda_total=deuda_total,

@@ -41,6 +41,11 @@
       </div>
 
       <div class="d-grid gap-2">
+        <div class="mb-3">
+          <label for="comision_pct" class="form-label fw-semibold">Comisión de sus compras (%)</label>
+          <input id="comision_pct" name="comision_pct" type="number" min="0" max="100" step="0.01" required class="form-control" value="{{ request.form.get('comision_pct', sucursal.comision_pct if sucursal else '0') }}">
+          <div class="form-text">Se suma al importe después de descuentos. Cambiarla no modifica tickets ya confirmados.</div>
+        </div>
         <button type="submit" class="btn btn-dark">
           <i class="bi bi-check-lg"></i>
           {{ 'Guardar cambios' if sucursal else 'Registrar sucursal' }}

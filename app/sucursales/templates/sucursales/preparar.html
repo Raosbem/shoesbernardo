@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Preparar entrega · {{ ticket.sucursal.nombre }}{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width:900px">
+<a class="btn btn-outline-secondary mb-3" href="{{ url_for('sucursales.detalle', id=ticket.sucursal_id) }}">Volver a la sucursal</a>
+<h4>Preparar entrega · {{ ticket.sucursal.nombre }}</h4>
+<p class="text-muted">Captura el precio base y el descuento de cada artículo. Todavía no se cargará nada al saldo.</p>
+<div class="alert alert-info">Comisión fija: <strong>{{ '%.2f'|format(ticket.sucursal.comision_pct) }} %</strong> sobre el importe después del descuento.</div>
+<form method="post" id="precios-form" data-comision="{{ ticket.sucursal.comision_pct }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for l in ticket.lineas %}<section class="card card-body mb-3 articulo-precio">
+    <strong>{{ loop.index }}. {{ l.tienda }} · {{ l.codigo }}</strong><div>{{ l.descripcion }} · Talla {{ l.talla or '—' }} · {{ l.color or '' }}</div>
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-sm-5"><label class="form-label fw-semibold" for="precio-{{ l.id }}">Precio base del producto ($)</label><input id="precio-{{ l.id }}" name="precio_{{ l.id }}" class="form-control precio" type="number" inputmode="decimal" min="0.01" max="9999999999.99" step="0.01" required value="{{ request.form.get('precio_'~l.id, l.precio if l.precio is not none else '') }}" placeholder="Captura el precio"></div>
+      <div class="col-12 col-sm-4"><label class="form-label fw-semibold" for="descuento-{{ l.id }}">Descuento (%)</label><input id="descuento-{{ l.id }}" name="descuento_{{ l.id }}" class="form-control descuento" type="number" inputmode="decimal" min="0" max="100" step="0.01" required value="{{ request.form.get('descuento_'~l.id, l.descuento_pct if l.descuento_pct is not none else '') }}" placeholder="0 si no aplica"></div>
+      <div class="col-sm-3 align-self-end"><small class="text-muted">Importe neto</small><div class="fw-bold neto">—</div></div>
+    </div>
+  </section>{% endfor %}
+  <div class="card card-body mb-3">
+    <h6>Vales de esta sucursal</h6><p class="mb-2">Disponible: <strong>${{ '%.2f'|format(disponible) }}</strong></p>
+    <label class="form-label" for="vale">¿Cuánto quieres aplicar en esta entrega?</label>
+    <input id="vale" name="vale_aplicar" type="number" inputmode="decimal" min="0" max="{{ disponible }}" step="0.01" class="form-control" value="{{ request.form.get('vale_aplicar', ticket.vale_aplicado) }}" required>
+    {% if disponible > 0 %}<button type="button" id="usar-vales" class="btn btn-outline-success mt-2" data-disponible="{{ disponible }}">Usar los vales disponibles</button>{% endif %}
+    <small class="text-muted mt-2">El sistema usa primero los vales más antiguos. Lo que sobre se conserva.</small>
+  </div>
+  <div class="card card-body mb-3" aria-live="polite">
+    <div class="d-flex justify-content-between"><span>Productos después de descuentos</span><strong id="subtotal">$0.00</strong></div>
+    <div class="d-flex justify-content-between"><span>Comisión {{ '%.2f'|format(ticket.sucursal.comision_pct) }} %</span><strong id="comision">$0.00</strong></div>
+    <div class="d-flex justify-content-between"><span>Vales aplicados</span><strong id="credito">$0.00</strong></div>
+    <div class="d-flex justify-content-between border-top mt-2 pt-2 fs-5"><span>Por pagar de esta entrega</span><strong id="total">$0.00</strong></div>
+  </div>
+  <button class="btn btn-primary btn-lg w-100">Revisar entrega antes de confirmar</button>
+</form>
+<form class="mt-2" method="post" action="{{ url_for('sucursales.cancelar_entrega', id=ticket.id) }}" onsubmit="return confirm('¿Cancelar esta preparación? Los artículos seguirán disponibles.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-secondary w-100">Cancelar preparación</button></form>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/sucursal_entrega.js') }}"></script>{% endblock %}

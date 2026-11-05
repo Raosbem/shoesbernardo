@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Revisar entrega' if revision else 'Ticket '~ticket.folio }}{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width:1000px">
+<a class="btn btn-outline-secondary mb-3" href="{{ url_for('portal.tickets') if portal else url_for('sucursales.detalle', id=ticket.sucursal_id, tab='tickets') }}">Volver a tickets</a>
+<h4>{{ 'Revisar entrega antes de confirmar' if revision else 'Ticket '~ticket.folio }}</h4>
+<p class="mb-1 fw-bold">{{ ticket.sucursal_nombre }}</p>
+{% if not revision %}<p>{{ (ticket.fecha_confirmacion|localtime).strftime('%d/%m/%Y %H:%M') }}</p><a class="btn btn-outline-dark mb-3" href="{{ url_for('portal.ticket_pdf' if portal else 'sucursales.ticket_pdf', id=ticket.id) }}">Descargar PDF</a>{% else %}<div class="alert alert-warning">Revisa precios, descuentos y vales. Al confirmar se registrará la entrega y se generará el ticket.</div>{% endif %}
+{% for l in ticket.lineas %}<div class="card card-body mb-2">
+  <strong>{{ l.tienda }} · {{ l.codigo }}</strong><span>{{ [l.descripcion or '', ('Talla '~l.talla) if l.talla else '', l.color or '']|reject('equalto','')|join(' · ') }}</span>
+  <div class="row g-2 mt-1 small"><div class="col-6 col-md-3">Precio: ${{ '%.2f'|format(l.precio) }}</div><div class="col-6 col-md-3">Descuento: {{ '%.2f'|format(l.descuento_pct) }} %</div><div class="col-6 col-md-3">Neto: <strong>${{ '%.2f'|format(l.neto) }}</strong></div><div class="col-6 col-md-3">Comisión: ${{ '%.2f'|format(l.comision) }}</div></div>
+  {% if not revision %}{% if l.pedido.devolucion %}<div class="small text-warning mt-2">Devolución {{ {'solicitada':'solicitada','aprobada':'aceptada: vale generado','rechazada':'rechazada'}.get(l.pedido.devolucion.estado) }}. El ticket original se conserva.</div>{% elif l.pedido.estatus == 'entregado' %}<a class="btn btn-warning btn-sm align-self-start mt-2" href="{{ url_for('portal.devolver' if portal else 'sucursales.devolver', id=l.pedido_id) }}">Solicitar devolución</a>{% endif %}{% endif %}
+</div>{% endfor %}
+<div class="card card-body mt-3">
+  <div class="d-flex justify-content-between"><span>Productos después de descuentos</span><strong>${{ '%.2f'|format(ticket.subtotal) }}</strong></div>
+  <div class="d-flex justify-content-between"><span>Comisión {{ '%.2f'|format(ticket.comision_pct) }} %</span><strong>${{ '%.2f'|format(ticket.comision) }}</strong></div>
+  <div class="d-flex justify-content-between"><span>Vales aplicados</span><strong>−${{ '%.2f'|format(ticket.vale_aplicado) }}</strong></div>
+  <div class="d-flex justify-content-between border-top mt-2 pt-2 fs-5"><span>Total de este ticket</span><strong>${{ '%.2f'|format(ticket.total) }}</strong></div>
+  {% for uso in ticket.usos_vales %}<small>{{ uso.vale.folio }}: ${{ '%.2f'|format(uso.monto) }}</small>{% endfor %}
+  {% if not revision %}<div class="d-flex justify-content-between mt-2"><span>Pagado</span><strong>${{ '%.2f'|format(ticket.total_pagado) }}</strong></div><div class="d-flex justify-content-between"><span>Pendiente de este ticket</span><strong>${{ '%.2f'|format(ticket.pendiente) }}</strong></div>{% endif %}
+</div>
+{% if revision %}
+  <div class="alert alert-light border mt-3">Deuda anterior: ${{ '%.2f'|format(ticket.sucursal.saldo) }} · Deuda después de esta entrega: <strong>${{ '%.2f'|format(ticket.sucursal.saldo + ticket.total) }}</strong></div>
+  <form method="post" action="{{ url_for('sucursales.confirmar', id=ticket.id) }}" onsubmit="this.querySelector('button').disabled=true"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ firma }}"><button class="btn btn-success btn-lg w-100">Confirmar entrega y generar ticket</button></form>
+  <a class="btn btn-outline-secondary w-100 mt-2" href="{{ url_for('sucursales.precios', id=ticket.id) }}">Corregir precios o vales</a>
+{% elif not portal and ticket.pendiente > 0 and ticket.sucursal.saldo > 0 %}
+  <form method="post" action="{{ url_for('sucursales.abonar', id=ticket.sucursal_id) }}" class="card card-body mt-3"><h6>Registrar pago de este ticket</h6><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="ticket_id" value="{{ ticket.id }}"><label for="monto" class="form-label">Monto recibido</label><input id="monto" name="monto" type="number" min="0.01" max="{{ [ticket.pendiente,ticket.sucursal.saldo]|min }}" step="0.01" class="form-control mb-2" required><label for="nota" class="form-label">Nota (opcional)</label><input id="nota" name="notas" class="form-control mb-2" maxlength="200"><button class="btn btn-success">Registrar pago</button></form>
+{% endif %}
+{% if not revision %}<p class="text-muted small mt-3">Este ticket conserva los importes de la entrega. Las devoluciones generan vales separados por el neto del producto, sin comisión.</p>{% endif %}
+</div>
+{% endblock %}

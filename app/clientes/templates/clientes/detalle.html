@@ -16,8 +16,9 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-center mb-3">
+          {% if cliente.saldo < 0 %}<div class="text-success fw-semibold">Saldo a favor</div>{% endif %}
           <div class="fs-1 fw-bold {% if cliente.saldo > 0 %}text-danger{% else %}text-success{% endif %}">
-            ${{ "%.0f"|format(cliente.saldo) }}
+            ${{ "%.2f"|format(cliente.saldo|abs) }}
           </div>
           <div class="text-muted small">Saldo pendiente</div>
         </div>
@@ -30,16 +31,16 @@
         {% endif %}
         <p class="mb-1 text-muted small">
           <i class="bi bi-calendar"></i>
-          Cliente desde {{ cliente.fecha_registro.strftime('%d/%m/%Y') }}
+          Cliente desde {{ (cliente.fecha_registro|localtime).strftime('%d/%m/%Y') }}
         </p>
         <hr>
         <div class="row text-center g-2">
           <div class="col-6">
-            <div class="fw-bold text-success">${{ "%.0f"|format(total_abonado) }}</div>
+            <div class="fw-bold text-success">${{ "%.2f"|format(total_abonado) }}</div>
             <div class="text-muted" style="font-size:.75rem">Total abonado</div>
           </div>
           <div class="col-6">
-            <div class="fw-bold text-primary">${{ "%.0f"|format(total_comprado) }}</div>
+            <div class="fw-bold text-primary">${{ "%.2f"|format(total_comprado) }}</div>
             <div class="text-muted" style="font-size:.75rem">Total comprado</div>
           </div>
         </div>
@@ -59,7 +60,7 @@
         </a>
         {% if current_user.rol == 'admin' %}
         <form method="POST" action="{{ url_for('clientes.desactivar', id=cliente.id) }}"
-              onsubmit="return confirm('¿Desactivar a {{ cliente.nombre }}?')">
+              onsubmit="return confirm('¿Desactivar este registro?')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline-danger btn-sm w-100">
             <i class="bi bi-person-x"></i> Desactivar
@@ -98,20 +99,20 @@
           <tbody>
             {% for a in abonos %}
             <tr>
-              <td class="text-nowrap text-muted small">{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-              <td class="text-end fw-semibold text-success">${{ "%.0f"|format(a.monto) }}</td>
+              <td class="text-nowrap text-muted small">{{ (a.fecha|localtime).strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="text-end fw-semibold text-success">${{ "%.2f"|format(a.monto) }}</td>
               <td class="text-muted small">{{ a.notas or '—' }}</td>
               <td class="text-muted small">{{ a.usuario.nombre }}</td>
               <td>
-                <form method="POST"
+                {% if current_user.rol == 'admin' %}<form method="POST"
                       action="{{ url_for('abonos.eliminar', id=a.id) }}"
-                      onsubmit="return confirm('¿Eliminar abono de ${{ "%.0f"|format(a.monto) }}? Se revertirá al saldo.')">
+                      onsubmit="return confirm('¿Anular abono de ${{ "%.2f"|format(a.monto) }}? Se revertirá al saldo.')">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="origen" value="detalle">
                   <button type="submit" class="btn btn-outline-danger btn-sm py-0">
                     <i class="bi bi-trash"></i>
                   </button>
-                </form>
+                </form>{% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -143,19 +144,19 @@
           <tbody>
             {% for c in cargos %}
             <tr>
-              <td class="text-nowrap text-muted small">{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-              <td class="text-end fw-semibold text-danger">${{ "%.0f"|format(c.monto) }}</td>
+              <td class="text-nowrap text-muted small">{{ (c.fecha|localtime).strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="text-end fw-semibold text-danger">${{ "%.2f"|format(c.monto) }}</td>
               <td class="small">{{ c.descripcion }}</td>
               <td class="text-muted small">{{ c.usuario.nombre }}</td>
               <td>
-                <form method="POST"
+                {% if current_user.rol == 'admin' %}<form method="POST"
                       action="{{ url_for('clientes.eliminar_cargo', cliente_id=cliente.id, cargo_id=c.id) }}"
-                      onsubmit="return confirm('¿Eliminar cargo de ${{ "%.0f"|format(c.monto) }}? Se descontará del saldo.')">
+                      onsubmit="return confirm('¿Anular cargo de ${{ "%.2f"|format(c.monto) }}? Se descontará del saldo.')">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-outline-danger btn-sm py-0">
                     <i class="bi bi-trash"></i>
                   </button>
-                </form>
+                </form>{% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -190,16 +191,16 @@
           <tbody>
             {% for p in pedidos %}
             <tr>
-              <td class="text-nowrap">{{ p.fecha_pedido.strftime('%d/%m/%Y') }}</td>
+              <td class="text-nowrap">{{ (p.fecha_pedido|localtime).strftime('%d/%m/%Y') }}</td>
               <td>
-                <a href="{{ url_for('pedidos.detalle', id=p.id) }}" class="text-decoration-none text-dark fw-semibold">
+                <a href="{{ (url_for('sucursales.detalle', id=p.sucursal_id) if p.sucursal_id is defined else url_for('pedidos.detalle', id=p.id)) }}" class="text-decoration-none text-dark fw-semibold">
                   {% if p.codigo_producto %}#{{ p.codigo_producto }}{% endif %}
                   {% if p.talla %}<span class="badge bg-secondary ms-1">T{{ p.talla }}</span>{% endif %}
                 </a>
                 {% if p.descripcion %}<div class="text-muted" style="font-size:.75rem">{{ p.descripcion[:30] }}</div>{% endif %}
               </td>
               <td class="text-muted small">{{ p.zapateria.nombre }}</td>
-              <td class="text-end">${{ "%.0f"|format(p.precio_venta) }}</td>
+              <td class="text-end">${{ "%.2f"|format(p.precio_venta) }}</td>
               <td><span class="badge estatus-{{ p.estatus }}">{{ p.estatus }}</span></td>
               <td>
                 {% if p.estatus == 'entregado' %}
@@ -228,7 +229,7 @@
                       <p class="text-muted small mb-1">
                         {% if p.codigo_producto %}#{{ p.codigo_producto }} · {% endif %}{{ p.zapateria.nombre }}
                       </p>
-                      <p class="text-danger small fw-semibold mb-3">Se descontarán ${{ "%.0f"|format(p.precio_venta) }} del saldo.</p>
+                      <p class="text-danger small fw-semibold mb-3">Se descontarán ${{ "%.2f"|format(p.precio_venta) }} del saldo.</p>
                       <div class="d-grid gap-2">
                         <div class="form-check border rounded p-3">
                           <input class="form-check-input" type="radio" name="tipo" value="devolucion"

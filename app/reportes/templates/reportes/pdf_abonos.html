@@ -48,7 +48,7 @@
     <tbody>
       {% for a in abonos %}
       <tr>
-        <td>{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ (a.fecha|localtime).strftime('%d/%m/%Y %H:%M') }}</td>
         <td>{{ a.cliente.nombre }}</td>
         <td class="text-right">${{ "%.2f"|format(a.monto) }}</td>
         <td>{{ a.notas or '—' }}</td>

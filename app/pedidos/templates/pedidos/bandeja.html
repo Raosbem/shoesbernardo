@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Pedidos{% endblock %}
+{% block content %}
+{% set nombres = {'pendiente':'Por comprar','comprado':'Comprado','recibido':'Recibido en local','entregado':'Entregado','cancelado':'Cancelado','devuelto':'Devuelto'} %}
+<div class="d-flex flex-wrap justify-content-between gap-2 mb-3"><h4 class="mb-0">Pedidos</h4><div class="d-flex flex-wrap gap-2"><a class="btn btn-dark" href="{{ url_for('pedidos.nuevo') }}">+ Pedido local</a><a class="btn btn-outline-dark" href="{{ url_for('sucursales.lista') }}">Pedido de sucursal</a><a class="btn btn-outline-secondary" href="{{ url_for('pedidos.lista') }}">Pedidos locales por tienda</a></div></div>
+<nav class="nav nav-pills gap-2 mb-3">{% for key,title in [('todos','Todos'),('locales','Clientes del local'),('sucursales','Sucursales')] %}<a class="nav-link {% if tipo == key %}active{% endif %}" href="{{ url_for('pedidos.bandeja', tipo=key) }}">{{ title }}</a>{% endfor %}</nav>
+<form method="get" class="card card-body mb-3"><input type="hidden" name="tipo" value="{{ tipo }}"><div class="row g-2">
+  <div class="col-12 col-sm-3"><label for="estado" class="form-label">Estado</label><select id="estado" name="estado" class="form-select"><option value="activos" {% if estado == 'activos' %}selected{% endif %}>Pendientes de entrega</option>{% for key,title in nombres.items() %}<option value="{{ key }}" {% if estado == key %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></div>
+  {% if tipo != 'locales' %}<div class="col-12 col-sm-3"><label for="sucursal" class="form-label">Sucursal</label><select id="sucursal" name="sucursal_id" class="form-select"><option value="">Todas</option>{% for s in sucursales %}<option value="{{ s.id }}" {% if sucursal and sucursal.id == s.id %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}</select></div>{% endif %}
+  <div class="col-12 col-sm-3"><label for="tienda" class="form-label">Zapatería</label><select id="tienda" name="zapateria_id" class="form-select"><option value="">Todas</option>{% for z in zapaterias %}<option value="{{ z.id }}" {% if zapateria_id == z.id %}selected{% endif %}>{{ z.nombre }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-sm-3"><label for="codigo-buscar" class="form-label">Código de producto</label><input id="codigo-buscar" name="q" class="form-control" value="{{ q }}"></div>
+  <div class="col-12"><button class="btn btn-outline-primary">Aplicar filtros</button></div>
+</div></form>
+{% if sucursal %}<form id="preparar-bandeja" method="post" action="{{ url_for('sucursales.preparar', id=sucursal.id) }}" class="alert alert-info"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="mb-2">Selecciona los artículos recibidos de <strong>{{ sucursal.nombre }}</strong> para capturar sus precios y descuentos.</div><button class="btn btn-primary">Preparar entrega de los seleccionados</button></form>{% endif %}
+{% for p in pedidos %}{% set es_sucursal = p.sucursal_id is defined %}
+<div class="card card-body mb-2"><div class="d-flex flex-wrap gap-3 justify-content-between"><div>
+{% if es_sucursal and sucursal and p.estatus == 'recibido' and not p.detalle_ticket %}<label class="form-check"><input type="checkbox" class="form-check-input" name="pedidos" value="{{ p.id }}" form="preparar-bandeja">Seleccionar para entrega</label>{% endif %}
+<div><span class="badge bg-{{ 'primary' if es_sucursal else 'secondary' }}">{{ 'Sucursal' if es_sucursal else 'Local' }}</span> <strong>{{ p.cliente.nombre }}</strong></div><strong>{{ p.zapateria.nombre }} · {{ p.codigo_producto or 'Sin código' }}</strong><div>{{ p.descripcion }} · Talla {{ p.talla or '—' }} · {{ p.color or '' }}</div><small class="text-muted">{{ nombres.get(p.estatus, p.estatus) }}</small>{% if p.notas %}<div class="small">Notas: {{ p.notas }}</div>{% endif %}
+</div><div class="d-flex flex-wrap gap-2 align-items-start">
+{% if es_sucursal %}
+  {% if p.estatus in ('pendiente','comprado') %}<form method="post" action="{{ url_for('sucursales.avanzar_pedido', id=p.sucursal_id, pedido_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="estatus_actual" value="{{ p.estatus }}"><input type="hidden" name="origen" value="bandeja"><input type="hidden" name="tipo" value="{{ tipo }}"><input type="hidden" name="estado" value="{{ estado }}"><input type="hidden" name="sucursal_id" value="{{ sucursal.id if sucursal else '' }}"><button class="btn btn-outline-primary">{{ 'Marcar comprado' if p.estatus == 'pendiente' else 'Ya llegó al local' }}</button></form>{% endif %}
+  <a class="btn btn-outline-dark" href="{{ url_for('sucursales.detalle', id=p.sucursal_id) }}">{{ 'Ver y preparar entrega' if p.estatus == 'recibido' else 'Ver sucursal' }}</a>
+{% else %}<a class="btn btn-outline-dark" href="{{ url_for('pedidos.detalle', id=p.id) }}">Ver pedido local</a>{% endif %}
+</div></div></div>{% else %}<div class="alert alert-light border">No hay artículos con estos filtros.</div>{% endfor %}
+{% endblock %}

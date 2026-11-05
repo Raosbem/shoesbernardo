@@ -13,7 +13,7 @@
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-success">${{ "%.0f"|format(abonos_hoy) }}</div>
+        <div class="fs-2 fw-bold text-success">${{ "%.2f"|format(abonos_hoy) }}</div>
         <div class="small text-muted">Cobrado hoy</div>
       </div>
     </div>
@@ -22,7 +22,7 @@
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-primary">${{ "%.0f"|format(abonos_semana) }}</div>
+        <div class="fs-2 fw-bold text-primary">${{ "%.2f"|format(abonos_semana) }}</div>
         <div class="small text-muted">Cobrado esta semana</div>
       </div>
     </div>
@@ -31,7 +31,7 @@
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold" style="color:#0dcaf0">${{ "%.0f"|format(ventas_semana) }}</div>
+        <div class="fs-2 fw-bold" style="color:#0dcaf0">${{ "%.2f"|format(ventas_semana) }}</div>
         <div class="small text-muted">Vendido esta semana</div>
       </div>
     </div>
@@ -40,8 +40,8 @@
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-dark">${{ "%.0f"|format(ventas_mes) }}</div>
-        <div class="small text-muted">Vendido este mes</div>
+        <div class="fs-2 fw-bold text-dark">${{ "%.2f"|format(ventas_mes) }}</div>
+        <div class="small text-muted">Productos vendidos este mes (sin comisión)</div>
       </div>
     </div>
   </div>
@@ -56,7 +56,7 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('pedidos.lista') }}" class="text-decoration-none">
+    <a href="{{ url_for('pedidos.bandeja') }}" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center h-100
                   {% if pedidos_comprados > 0 %}border-start border-4 border-primary{% endif %}">
         <div class="card-body py-3">
@@ -70,12 +70,13 @@
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-danger">${{ "%.0f"|format(deuda_total) }}</div>
+        <div class="fs-2 fw-bold text-danger">${{ "%.2f"|format(deuda_total) }}</div>
         <div class="small text-muted">Deuda total ({{ clientes_con_deuda }})</div>
       </div>
     </div>
   </div>
 
+  <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center h-100"><div class="card-body py-3"><div class="fs-2 fw-bold text-success">${{ '%.2f'|format(comisiones_mes) }}</div><div class="small text-muted">Comisiones de sucursales este mes</div></div></div></div>
 </div>
 
 <!-- Accesos rápidos -->
@@ -99,7 +100,7 @@
     </a>
   </div>
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('pedidos.lista') }}" class="btn btn-outline-dark w-100 py-3">
+    <a href="{{ url_for('pedidos.bandeja') }}" class="btn btn-outline-dark w-100 py-3">
       <i class="bi bi-bag d-block fs-4 mb-1"></i>
       Ver Pedidos
     </a>
@@ -114,7 +115,7 @@
     <div class="card border-0 shadow-sm border-start border-4 border-primary">
       <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-box-seam text-primary"></i> Listos para entregar ({{ lista_comprados|length }})</span>
-        <a href="{{ url_for('pedidos.lista') }}" class="small text-decoration-none">Ver todos →</a>
+        <a href="{{ url_for('pedidos.bandeja') }}" class="small text-decoration-none">Ver todos →</a>
       </div>
       <div class="table-responsive">
         <table class="table table-sm mb-0">
@@ -137,9 +138,9 @@
                 {% if p.talla %}<span class="badge bg-secondary ms-1">T{{ p.talla }}</span>{% endif %}
               </td>
               <td class="text-muted small">{{ p.zapateria.nombre }}</td>
-              <td class="text-end">${{ "%.0f"|format(p.precio_venta) }}</td>
+              <td class="text-end">{% if p.sucursal_id is defined and p.estatus in ('pendiente','comprado','recibido') %}Precio al entregar{% else %}${{ "%.2f"|format(p.precio_venta) }}{% endif %}</td>
               <td>
-                <a href="{{ url_for('pedidos.detalle', id=p.id) }}"
+                <a href="{{ (url_for('sucursales.detalle', id=p.sucursal_id) if p.sucursal_id is defined else url_for('pedidos.detalle', id=p.id)) }}"
                    class="btn btn-outline-primary btn-sm py-0">
                   <i class="bi bi-box-arrow-up-right"></i>
                 </a>
@@ -166,9 +167,9 @@
           <li class="list-group-item d-flex justify-content-between align-items-center py-2">
             <div>
               <span class="fw-semibold">{{ a.cliente.nombre }}</span>
-              <small class="text-muted d-block">{{ a.fecha.strftime('%H:%M') }}{% if a.notas %} — {{ a.notas }}{% endif %}</small>
+              <small class="text-muted d-block">{{ (a.fecha|localtime).strftime('%H:%M') }}{% if a.notas %} — {{ a.notas }}{% endif %}</small>
             </div>
-            <span class="badge bg-success fs-6">${{ "%.0f"|format(a.monto) }}</span>
+            <span class="badge bg-success fs-6">${{ "%.2f"|format(a.monto) }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -196,7 +197,7 @@
           {% for p in ultimos_pedidos %}
           <li class="list-group-item d-flex justify-content-between align-items-center py-2">
             <div>
-              <a href="{{ url_for('pedidos.detalle', id=p.id) }}" class="fw-semibold text-decoration-none text-dark">
+              <a href="{{ (url_for('sucursales.detalle', id=p.sucursal_id) if p.sucursal_id is defined else url_for('pedidos.detalle', id=p.id)) }}" class="fw-semibold text-decoration-none text-dark">
                 {{ p.cliente.nombre }}
               </a>
               <small class="text-muted d-block">
@@ -204,7 +205,7 @@
                 — {{ p.zapateria.nombre }}
               </small>
             </div>
-            <span class="badge estatus-{{ p.estatus }}">${{ "%.0f"|format(p.precio_venta) }}</span>
+            <span class="badge estatus-{{ p.estatus }}">{% if p.sucursal_id is defined and p.estatus in ('pendiente','comprado','recibido') %}Precio al entregar{% else %}${{ "%.2f"|format(p.precio_venta) }}{% endif %}</span>
           </li>
           {% endfor %}
         </ul>
@@ -214,7 +215,7 @@
       </div>
       {% if ultimos_pedidos %}
       <div class="card-footer bg-white text-end">
-        <a href="{{ url_for('pedidos.lista') }}" class="small text-decoration-none">Ver todos →</a>
+        <a href="{{ url_for('pedidos.bandeja') }}" class="small text-decoration-none">Ver todos →</a>
       </div>
       {% endif %}
     </div>
@@ -231,11 +232,11 @@
         <ul class="list-group list-group-flush">
           {% for cliente, cuenta in top_deudores %}
           <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-            <a href="{{ url_for('clientes.detalle', id=cliente.id) }}"
+            <a href="{{ url_for('sucursales.detalle' if cliente.es_sucursal else 'clientes.detalle', id=cliente.id) }}"
                class="text-decoration-none text-dark fw-semibold">
               {{ cliente.nombre }}
             </a>
-            <span class="badge bg-danger fs-6">${{ "%.0f"|format(cuenta.saldo_total) }}</span>
+            <span class="badge bg-danger fs-6">${{ "%.2f"|format(cuenta.saldo_total) }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -263,7 +264,7 @@
               {{ cliente.nombre }}
             </a>
             <div class="text-end">
-              <span class="badge bg-warning text-dark">${{ "%.0f"|format(cuenta.saldo_total) }}</span>
+              <span class="badge bg-warning text-dark">${{ "%.2f"|format(cuenta.saldo_total) }}</span>
             </div>
           </li>
           {% endfor %}

@@ -1,3 +1,5 @@
+from app.utils import utc_now
+from app.utils import money, today, utc_start, admin_required, get_customer, lock_customer
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
@@ -24,16 +26,16 @@ def lista():
 
     clientes = query.order_by(Cliente.nombre).all()
 
-    hoy = date.today()
+    hoy = today()
     limite_inactividad = hoy - timedelta(days=30)
 
     for c in clientes:
         c._alerta_deuda_alta = c.saldo > 500
-        ultimo_abono = Abono.query.filter_by(cliente_id=c.id)\
+        ultimo_abono = Abono.query.filter_by(anulado=False, cliente_id=c.id)\
             .order_by(Abono.fecha.desc()).first()
         c._alerta_inactivo = (
             c.saldo > 0 and
-            (ultimo_abono is None or ultimo_abono.fecha.date() < limite_inactividad)
+            (ultimo_abono is None or ultimo_abono.fecha < utc_start(limite_inactividad))
         )
 
     if solo_deuda:
@@ -58,12 +60,12 @@ def nuevo():
             flash('El nombre es obligatorio.', 'danger')
             return render_template('clientes/form.html', cliente=None)
 
-        if Cliente.query.filter(Cliente.nombre.ilike(nombre), Cliente.es_sucursal == False).first():
+        if Cliente.query.filter(db.func.lower(Cliente.nombre) == nombre.lower(), Cliente.es_sucursal == False).first():
             flash(f'Ya existe un cliente con el nombre "{nombre}".', 'warning')
             return render_template('clientes/form.html', cliente=None)
 
         try:
-            saldo_inicial = float(saldo_inicial_str) if saldo_inicial_str else 0.0
+            saldo_inicial = money(saldo_inicial_str) if saldo_inicial_str else money(0)
             if saldo_inicial < 0:
                 raise ValueError
         except ValueError:
@@ -106,21 +108,21 @@ def nuevo():
 @clientes_bp.route('/<int:id>')
 @login_required
 def detalle(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_customer(id)
 
-    abonos = Abono.query.filter_by(cliente_id=id)\
+    abonos = Abono.query.filter_by(anulado=False, cliente_id=id)\
         .order_by(Abono.fecha.desc()).limit(20).all()
 
-    cargos = Cargo.query.filter_by(cliente_id=id)\
+    cargos = Cargo.query.filter_by(anulado=False, cliente_id=id)\
         .order_by(Cargo.fecha.desc()).limit(20).all()
 
     pedidos = Pedido.query.filter_by(cliente_id=id)\
         .order_by(Pedido.fecha_pedido.desc()).limit(20).all()
 
     total_abonado = db.session.query(db.func.sum(Abono.monto))\
-        .filter_by(cliente_id=id).scalar() or 0.0
+        .filter_by(anulado=False, cliente_id=id).scalar() or money(0)
     total_comprado = db.session.query(db.func.sum(Pedido.precio_venta))\
-        .filter_by(cliente_id=id, estatus='entregado').scalar() or 0.0
+        .filter_by(cliente_id=id, estatus='entregado').scalar() or money(0)
 
     return render_template('clientes/detalle.html',
                            cliente=cliente,
@@ -137,7 +139,7 @@ def detalle(id):
 @clientes_bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_customer(id)
 
     if request.method == 'POST':
         nombre = request.form.get('nombre', '').strip()
@@ -145,6 +147,9 @@ def editar(id):
             flash('El nombre es obligatorio.', 'danger')
             return render_template('clientes/form.html', cliente=cliente)
 
+        if Cliente.query.filter(Cliente.id != id, db.func.lower(Cliente.nombre) == nombre.lower(), Cliente.es_sucursal == False).first():
+            flash('Ya existe otro cliente con ese nombre.', 'danger')
+            return render_template('clientes/form.html', cliente=cliente)
         cliente.nombre = nombre
         cliente.telefono = request.form.get('telefono', '').strip() or None
         cliente.direccion = request.form.get('direccion', '').strip() or None
@@ -166,7 +171,7 @@ def desactivar(id):
         flash('Solo el administrador puede desactivar clientes.', 'danger')
         return redirect(url_for('clientes.detalle', id=id))
 
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_customer(id)
     cliente.activo = False
     db.session.commit()
     flash(f'Cliente "{cliente.nombre}" desactivado.', 'info')
@@ -179,12 +184,12 @@ def desactivar(id):
 @clientes_bp.route('/<int:id>/cargo', methods=['POST'])
 @login_required
 def agregar_cargo(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_customer(id)
     monto_str = request.form.get('monto', '').strip()
     descripcion = request.form.get('descripcion', '').strip()
 
     try:
-        monto = float(monto_str)
+        monto = money(monto_str)
         if monto <= 0:
             raise ValueError
     except ValueError:
@@ -195,6 +200,7 @@ def agregar_cargo(id):
         flash('La descripción del cargo es obligatoria.', 'danger')
         return redirect(url_for('clientes.detalle', id=id))
 
+    lock_customer(cliente)
     cargo = Cargo(
         cliente_id=id,
         monto=monto,
@@ -204,12 +210,12 @@ def agregar_cargo(id):
     db.session.add(cargo)
 
     if not cliente.cuenta:
-        cliente.cuenta = Cuenta(cliente_id=id, saldo_total=0.0)
+        cliente.cuenta = Cuenta(cliente_id=id, saldo_total=money(0))
         db.session.add(cliente.cuenta)
     cliente.cuenta.agregar_cargo(monto)
 
     db.session.commit()
-    flash(f'Cargo de ${monto:.0f} agregado. Saldo: ${cliente.cuenta.saldo_total:.0f}', 'success')
+    flash(f'Cargo de ${monto:.2f} agregado. Saldo: ${cliente.cuenta.saldo_total:.2f}', 'success')
     return redirect(url_for('clientes.detalle', id=id))
 
 
@@ -218,21 +224,30 @@ def agregar_cargo(id):
 # ---------------------------------------------------------------------------
 @clientes_bp.route('/<int:cliente_id>/cargo/<int:cargo_id>/eliminar', methods=['POST'])
 @login_required
+@admin_required
 def eliminar_cargo(cliente_id, cargo_id):
     cargo = Cargo.query.get_or_404(cargo_id)
-    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente = get_customer(cliente_id)
 
     if cargo.cliente_id != cliente_id:
         flash('Cargo no válido.', 'danger')
+        return redirect(url_for('clientes.detalle', id=cliente_id))
+
+    lock_customer(cliente)
+    db.session.refresh(cargo)
+    if cargo.anulado:
+        flash('Este cargo ya fue anulado.', 'warning')
         return redirect(url_for('clientes.detalle', id=cliente_id))
 
     # Revertir del saldo
     if cliente.cuenta:
         cliente.cuenta.aplicar_abono(cargo.monto)
 
-    db.session.delete(cargo)
+    cargo.anulado = True
+    cargo.anulado_por = current_user.id
+    cargo.fecha_anulacion = utc_now()
     db.session.commit()
-    flash(f'Cargo de ${cargo.monto:.0f} eliminado. Saldo: ${cliente.cuenta.saldo_total:.0f}', 'info')
+    flash(f'Cargo de ${cargo.monto:.2f} eliminado. Saldo: ${cliente.cuenta.saldo_total:.2f}', 'info')
     return redirect(url_for('clientes.detalle', id=cliente_id))
 
 

@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Solicitar devolución{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width:560px"><h4>Solicitar devolución</h4><div class="card card-body">
+<strong>{{ pedido.zapateria.nombre }} · {{ pedido.codigo_producto }}</strong><p>Talla {{ pedido.talla or '—' }} · {{ pedido.color or '' }}</p>
+<p>Vale por el producto: <strong>${{ '%.2f'|format(pedido.detalle_ticket.neto if pedido.detalle_ticket else pedido.precio_final) }}</strong>, sin comisión.</p>
+<p class="text-muted">El vale se genera cuando el administrador recibe y acepta el artículo. Después podrás usarlo en otra entrega.</p>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="motivo" class="form-label">¿Por qué lo devuelves?</label><textarea id="motivo" name="motivo" maxlength="200" required class="form-control mb-3" rows="3">{{ request.form.get('motivo', '') }}</textarea><button class="btn btn-warning w-100">Enviar solicitud de devolución</button></form>
+<a class="btn btn-outline-secondary mt-2" href="{{ url_for('portal.inicio') if portal else url_for('sucursales.detalle', id=pedido.sucursal_id) }}">Cancelar</a></div></div>
+{% endblock %}

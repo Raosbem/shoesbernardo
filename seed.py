@@ -4,6 +4,7 @@ Ejecutar una sola vez: python seed.py
 """
 from app import create_app, db
 from app.models import Usuario, Zapateria
+from flask_migrate import upgrade
 
 ZAPATERIAS = [
     'Supershoes',
@@ -19,7 +20,7 @@ ZAPATERIAS = [
 def seed():
     app = create_app()
     with app.app_context():
-        db.create_all()
+        upgrade()
 
         # Crear zapaterías si no existen
         for nombre in ZAPATERIAS:

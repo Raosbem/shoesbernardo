@@ -7,7 +7,15 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-cambiar-en-produccion')
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    BUSINESS_TIMEZONE = os.environ.get('BUSINESS_TIMEZONE', 'America/Mexico_City')
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = os.environ.get('COOKIE_SECURE') == '1'
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    MAX_CONTENT_LENGTH = 1024 * 1024
     DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
     # Si no hay DATABASE_URL, usa SQLite local

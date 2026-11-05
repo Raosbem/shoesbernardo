@@ -30,7 +30,7 @@
                 {% elif form_data and form_data.get('cliente_id')|int == c.id %}selected
                 {% endif %}>
                 {{ c.nombre }}
-                {% if c.saldo > 0 %} — ${{ "%.0f"|format(c.saldo) }} pendiente{% endif %}
+                {% if c.saldo > 0 %} — ${{ "%.2f"|format(c.saldo) }} pendiente{% endif %}
               </option>
               {% endfor %}
             </select>
@@ -88,7 +88,7 @@
                 <span class="input-group-text">$</span>
                 <input type="number" name="precio_catalogo" class="form-control"
                        value="{{ pedido.precio_catalogo if pedido and pedido.precio_catalogo else (form_data.get('precio_catalogo', '') if form_data else '') }}"
-                       placeholder="0" min="0" step="1">
+                       placeholder="0" min="0" step="0.01">
               </div>
             </div>
             <div class="col-6">
@@ -97,7 +97,7 @@
                 <span class="input-group-text">$</span>
                 <input type="number" name="precio_venta" class="form-control"
                        value="{{ pedido.precio_venta if pedido else (form_data.get('precio_venta', '') if form_data else '') }}"
-                       placeholder="0" min="1" step="1" required>
+                       placeholder="0" min="1" step="0.01" required>
               </div>
             </div>
           </div>

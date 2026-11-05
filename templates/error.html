@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Revisar solicitud{% endblock %}
+{% block content %}
+<div class="alert alert-warning">
+  <h5>No se pudo completar la solicitud ({{ error.code }})</h5>
+  <p>{{ error.description }}</p>
+  <a class="btn btn-outline-dark" href="{{ url_for('dashboard.index') }}">Volver al inicio</a>
+</div>
+{% endblock %}

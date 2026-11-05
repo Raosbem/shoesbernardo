@@ -29,7 +29,7 @@
               {% for c in clientes %}
               <option value="{{ c.id }}"
                 {% if cliente_presel and cliente_presel.id == c.id %}selected{% endif %}>
-                {{ c.nombre }}{% if c.saldo > 0 %} — debe ${{ "%.0f"|format(c.saldo) }}{% endif %}
+                {{ c.nombre }}{% if c.saldo > 0 %} — debe ${{ "%.2f"|format(c.saldo) }}{% endif %}
               </option>
               {% endfor %}
             </select>
@@ -47,7 +47,7 @@
             <div class="input-group input-group-lg">
               <span class="input-group-text">$</span>
               <input type="number" name="monto" class="form-control" id="inputMonto"
-                     placeholder="0" min="1" step="1" required autofocus>
+                     placeholder="0" min="1" step="0.01" required autofocus>
             </div>
           </div>
 
@@ -97,7 +97,7 @@ function actualizarSaldo(id) {
   const valor = document.getElementById('saldoValor');
   const numId = parseInt(id);
   if (numId && saldos[numId] > 0) {
-    valor.textContent = '$' + Math.round(saldos[numId]);
+    valor.textContent = '$' + saldos[numId].toFixed(2);
     info.classList.remove('d-none');
   } else {
     info.classList.add('d-none');

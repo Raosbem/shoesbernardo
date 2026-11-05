@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Devoluciones de sucursales{% endblock %}
+{% block content %}<a href="{{ url_for('sucursales.lista') }}" class="btn btn-outline-secondary mb-3">Volver a sucursales</a><h4>Devoluciones de sucursales</h4>{% include 'sucursales/_devoluciones.html' %}{% endblock %}

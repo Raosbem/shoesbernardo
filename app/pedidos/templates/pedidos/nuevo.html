@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo pedido{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width:850px">
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <a href="{{ volver if modo_sucursal else url_for('pedidos.lista') }}" class="btn btn-outline-secondary" aria-label="Volver a pedidos"><i class="bi bi-arrow-left"></i></a>
+    <div><h5 class="fw-bold mb-1">{{ 'Pedido de '~sucursal.nombre if modo_sucursal else 'Nuevo pedido' }}</h5><p class="text-muted mb-0">{{ 'Agrega tus artículos y envía el pedido. El precio final se confirma al entregar.' if modo_sucursal else 'Agrega los artículos del cliente, aunque sean de distintas zapaterías.' }}</p></div>
+  </div>
+  <noscript><div class="alert alert-warning">Activa JavaScript en tu navegador para agregar y revisar los artículos.</div></noscript>
+  <form method="post" id="pedido-form" data-modo="{{ 'sucursal' if modo_sucursal else 'local' }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="articulos" id="articulos" value="[]">
+    {% if modo_sucursal %}<input type="hidden" name="intencion" id="intencion" value="enviar">{% endif %}
+    {% if not modo_sucursal %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body p-3 p-md-4">
+      <label for="cliente" class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
+      <select id="cliente" name="cliente_id" class="form-select" required>
+        <option value="">Selecciona un cliente</option>
+        {% for c in clientes %}<option value="{{ c.id }}" {% if cliente_presel and cliente_presel.id == c.id %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+      </select>
+      <div class="form-text">Todos los artículos de esta captura se registrarán para este cliente.</div>
+    </div></div>
+    {% endif %}
+
+    <section id="resumen" class="card border-0 shadow-sm mb-3" hidden aria-labelledby="resumen-titulo">
+      <div class="card-body p-3 p-md-4">
+        <h6 id="resumen-titulo" class="fw-bold">Artículos del pedido</h6>
+        <div id="lista-articulos"></div>
+        <div id="total" class="text-end fw-bold pt-3" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="editor" class="card border-0 shadow-sm mb-3" aria-labelledby="editor-titulo">
+      <div class="card-body p-3 p-md-4">
+        <h6 id="editor-titulo" class="fw-bold mb-3" tabindex="-1">Primer artículo</h6>
+        <div class="mb-3">
+          <label for="zapateria" class="form-label fw-semibold">Zapatería <span class="text-danger">*</span></label>
+          <select id="zapateria" data-campo="zapateria_id" class="form-select" required>
+            <option value="">Selecciona una zapatería</option>
+            {% for z in zapaterias %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-12 col-sm-4"><label for="codigo" class="form-label fw-semibold">Código <span class="text-danger">*</span></label><input id="codigo" data-campo="codigo" class="form-control" maxlength="50" placeholder="Ej: 12345" required></div>
+          <div class="col-6 col-sm-4"><label for="talla" class="form-label">Talla</label><input id="talla" data-campo="talla" class="form-control" maxlength="10" placeholder="Ej: 25"></div>
+          <div class="col-6 col-sm-4"><label for="color" class="form-label">Color</label><input id="color" data-campo="color" class="form-control" maxlength="50" placeholder="Ej: Negro"></div>
+        </div>
+        <div class="row g-3 mb-3">
+          {% if not modo_sucursal %}<div class="col-12 col-sm-6"><label for="precio_catalogo" class="form-label">Precio catálogo <small class="text-muted">(opcional)</small></label><div class="input-group"><span class="input-group-text">$</span><input id="precio_catalogo" data-campo="precio_catalogo" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" class="form-control" placeholder="0.00"></div></div>{% endif %}
+          <div class="col-12 col-sm-6"><label for="precio_venta" class="form-label fw-semibold">{{ 'Precio de referencia (opcional)' if modo_sucursal else 'Precio de venta' }} {% if not modo_sucursal %}<span class="text-danger">*</span>{% endif %}</label><div class="input-group"><span class="input-group-text">$</span><input id="precio_venta" data-campo="{{ 'precio_referencia' if modo_sucursal else 'precio_venta' }}" type="number" inputmode="decimal" min="{{ '0' if modo_sucursal else '0.01' }}" max="9999999999.99" step="0.01" class="form-control" placeholder="0.00" {% if not modo_sucursal %}required{% endif %}></div></div>
+        </div>
+        <div class="mb-3"><label for="descripcion" class="form-label">Descripción <small class="text-muted">(opcional)</small></label><input id="descripcion" data-campo="descripcion" class="form-control" maxlength="200" placeholder="Ej: Botín negro mujer"></div>
+        <div class="mb-3"><label for="notas" class="form-label">Notas de este artículo <small class="text-muted">(opcional)</small></label><textarea id="notas" data-campo="notas" class="form-control" maxlength="200" rows="2" placeholder="Indicaciones especiales"></textarea></div>
+        <div class="d-grid gap-2 d-sm-flex">
+          <button type="button" id="guardar-articulo" class="btn btn-outline-dark"><i class="bi bi-check2"></i> Agregar al pedido</button>
+          <button type="button" id="cancelar-edicion" class="btn btn-outline-secondary" hidden>Descartar este artículo</button>
+        </div>
+      </div>
+    </section>
+
+    <button type="button" id="otro-articulo" class="btn btn-outline-primary w-100 mb-3" hidden><i class="bi bi-plus-lg"></i> Agregar otro artículo</button>
+    <div id="aviso" class="alert alert-warning" role="alert" hidden></div>
+    <div class="card border-0 shadow-sm"><div class="card-body p-3 p-md-4">
+      <p class="small text-muted mb-3">{{ 'Enviar este pedido no genera deuda. Se cobra al confirmar la entrega con sus precios, descuentos y comisión.' if modo_sucursal else 'El saldo se cargará cuando entregues cada artículo.' }}</p>
+      <button type="submit" id="registrar" class="btn btn-dark btn-lg w-100" disabled>Registrar pedido</button>
+      {% if modo_sucursal %}<button type="submit" id="guardar-borrador" value="borrador" class="btn btn-outline-primary w-100 mt-2">Guardar borrador para después</button>{% endif %}
+      <a href="{{ volver if modo_sucursal else url_for('pedidos.lista') }}" class="btn btn-outline-secondary w-100 mt-2">Cancelar</a>
+    </div></div>
+  </form>
+</div>
+<script id="articulos-iniciales" type="application/json">{{ articulos|tojson }}</script>
+{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/pedidos_nuevo.js') }}"></script>{% endblock %}

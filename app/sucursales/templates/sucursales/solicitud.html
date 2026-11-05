@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Pedido #{{ solicitud.id }}{% endblock %}
+{% block content %}
+<a class="btn btn-outline-secondary mb-3" href="{{ url_for('portal.inicio') if portal else url_for('sucursales.detalle', id=solicitud.sucursal_id) }}">Volver a pedidos</a>
+<h4>Pedido #{{ solicitud.id }} · {{ solicitud.sucursal.nombre }}</h4>
+<p>{{ 'Borrador: todavía no se ha enviado.' if solicitud.estado == 'borrador' else 'Enviado. Cada artículo puede llegar y entregarse por separado.' }}</p>
+{% if solicitud.estado == 'borrador' %}<a class="btn btn-primary mb-3" href="{{ url_for('portal.editar' if portal else 'sucursales.editar_solicitud', id=solicitud.id) }}">Continuar y enviar pedido</a>{% endif %}
+{% set estados = {'borrador':'Borrador','pendiente':'Por comprar','comprado':'Comprado','recibido':'Recibido en local','entregado':'Entregado','devuelto':'Devuelto','cancelado':'Cancelado'} %}
+{% for p in solicitud.articulos %}<div class="card card-body mb-2"><strong>{{ p.zapateria.nombre }} · {{ p.codigo_producto }}</strong><div>{{ p.descripcion }} · Talla {{ p.talla or '—' }} · {{ p.color or 'Sin color' }}</div><small>{{ estados.get(p.estatus, p.estatus) }}{% if p.precio_referencia is not none %} · Precio de referencia ${{ '%.2f'|format(p.precio_referencia) }}{% endif %}</small>{% if p.notas %}<div class="small">Notas: {{ p.notas }}</div>{% endif %}</div>{% endfor %}
+{% endblock %}

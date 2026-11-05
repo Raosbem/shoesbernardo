@@ -24,7 +24,7 @@
             {{ pedido.cliente.nombre }}
           </a>
           {% if pedido.cliente.saldo > 0 %}
-          <div class="text-danger small">Saldo pendiente: ${{ "%.0f"|format(pedido.cliente.saldo) }}</div>
+          <div class="text-danger small">Saldo pendiente: ${{ "%.2f"|format(pedido.cliente.saldo) }}</div>
           {% endif %}
         </div>
 
@@ -67,12 +67,12 @@
           {% if pedido.precio_catalogo %}
           <div class="col-6">
             <div class="text-muted small">Precio catálogo</div>
-            <div>${{ "%.0f"|format(pedido.precio_catalogo) }}</div>
+            <div>${{ "%.2f"|format(pedido.precio_catalogo) }}</div>
           </div>
           {% endif %}
           <div class="col-6">
             <div class="text-muted small">Precio venta</div>
-            <div class="fw-bold text-success fs-5">${{ "%.0f"|format(pedido.precio_venta) }}</div>
+            <div class="fw-bold text-success fs-5">${{ "%.2f"|format(pedido.precio_venta) }}</div>
           </div>
         </div>
 
@@ -88,12 +88,12 @@
         <div class="row g-2 text-muted small">
           <div class="col-6">
             <div>Registrado</div>
-            <div>{{ pedido.fecha_pedido.strftime('%d/%m/%Y %H:%M') }}</div>
+            <div>{{ (pedido.fecha_pedido|localtime).strftime('%d/%m/%Y %H:%M') }}</div>
           </div>
           {% if pedido.fecha_entrega %}
           <div class="col-6">
             <div>Entregado</div>
-            <div>{{ pedido.fecha_entrega.strftime('%d/%m/%Y %H:%M') }}</div>
+            <div>{{ (pedido.fecha_entrega|localtime).strftime('%d/%m/%Y %H:%M') }}</div>
           </div>
           {% endif %}
         </div>
@@ -110,6 +110,7 @@
 
         {% if pedido.estatus == 'pendiente' %}
         <form method="POST" action="{{ url_for('pedidos.avanzar', id=pedido.id) }}">
+          <input type="hidden" name="estatus_actual" value="{{ pedido.estatus }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-primary w-100">
             <i class="bi bi-bag-check"></i> Marcar como comprado
@@ -121,7 +122,8 @@
 
         {% elif pedido.estatus == 'comprado' %}
         <form method="POST" action="{{ url_for('pedidos.avanzar', id=pedido.id) }}"
-              onsubmit="return confirm('¿Marcar como ENTREGADO? Se cargará ${{ "%.0f"|format(pedido.precio_venta) }} al saldo de {{ pedido.cliente.nombre }}.')">
+              onsubmit="return confirm('¿Marcar como ENTREGADO? Se cargará ${{ "%.2f"|format(pedido.precio_venta) }} al saldo del cliente.')">
+          <input type="hidden" name="estatus_actual" value="{{ pedido.estatus }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-success w-100">
             <i class="bi bi-check2-circle"></i> Marcar como entregado
@@ -212,7 +214,7 @@
         <div class="modal-body">
           <p class="text-muted small mb-1">{{ pedido.descripcion }} — {{ pedido.cliente.nombre }}</p>
           <p class="text-danger small fw-semibold mb-3">
-            Se descontarán ${{ "%.0f"|format(pedido.precio_venta) }} del saldo del cliente.
+            Se descontarán ${{ "%.2f"|format(pedido.precio_venta) }} del saldo del cliente.
           </p>
           <div class="d-grid gap-2">
             <div class="form-check border rounded p-3">

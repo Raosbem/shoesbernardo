@@ -60,7 +60,7 @@
         <td>{{ p.descripcion }}</td>
         <td>{{ p.color or '—' }}</td>
         <td>{{ p.talla or '—' }}</td>
-        <td class="text-right">${{ "%.0f"|format(p.precio_venta) }}</td>
+        <td class="text-right">${{ "%.2f"|format(p.precio_venta) }}</td>
         <td><span class="badge badge-{{ p.estatus }}">{{ p.estatus }}</span></td>
       </tr>
       {% endfor %}
@@ -68,7 +68,7 @@
     <tfoot>
       <tr class="total-row">
         <td colspan="5">Total</td>
-        <td class="text-right">${{ "%.0f"|format(pedidos|sum(attribute='precio_venta')) }}</td>
+        <td class="text-right">${{ "%.2f"|format(pedidos|sum(attribute='precio_venta')) }}</td>
         <td></td>
       </tr>
     </tfoot>

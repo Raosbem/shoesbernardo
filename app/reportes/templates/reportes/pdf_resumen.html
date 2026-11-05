@@ -51,6 +51,7 @@
   <div class="seccion-titulo">Métricas del negocio</div>
   <table>
     <tbody>
+      <tr><td class="label-col">Comisiones de sucursales este mes</td><td class="valor-col">${{ '%.2f'|format(comisiones_mes) }}</td></tr>
       <tr>
         <td class="label-col">Deuda total activa</td>
         <td class="valor-col">${{ "%.2f"|format(deuda_total) }}</td>
@@ -99,7 +100,7 @@
       <tr>
         <td>{{ p.cliente.nombre }}</td>
         <td>{{ p.descripcion }} — {{ p.zapateria.nombre }}</td>
-        <td style="text-align:right">${{ "%.0f"|format(p.precio_venta) }}</td>
+        <td style="text-align:right">{% if p.sucursal_id is defined %}Por confirmar{% else %}${{ "%.2f"|format(p.precio_venta) }}{% endif %}</td>
         <td style="text-align:center">
           <span class="badge badge-{{ p.estatus }}">{{ p.estatus }}</span>
         </td>

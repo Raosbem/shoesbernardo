@@ -19,7 +19,7 @@
       <option value="">Todos los clientes</option>
       {% for c in clientes %}
       <option value="{{ c.id }}" {% if cliente_id == c.id %}selected{% endif %}>
-        {{ c.nombre }}
+        {{ c.nombre }}{% if c.es_sucursal %} (sucursal){% endif %}
       </option>
       {% endfor %}
     </select>
@@ -39,7 +39,7 @@
 <!-- Total del día -->
 <div class="alert alert-success py-2 mb-3">
   <i class="bi bi-cash-stack"></i>
-  Total cobrado: <strong>${{ "%.0f"|format(total_dia) }}</strong>
+  Total cobrado: <strong>${{ "%.2f"|format(total_dia) }}</strong>
   {% if abonos %} en {{ abonos|length }} abono(s){% endif %}
 </div>
 
@@ -62,27 +62,27 @@
         {% for a in abonos %}
         <tr>
           <td class="text-nowrap text-muted small">
-            {{ a.fecha.strftime('%d/%m %H:%M') }}
+            {{ (a.fecha|localtime).strftime('%d/%m %H:%M') }}
           </td>
           <td>
-            <a href="{{ url_for('clientes.detalle', id=a.cliente_id) }}"
+            <a href="{{ url_for('sucursales.detalle' if a.cliente.es_sucursal else 'clientes.detalle', id=a.cliente_id) }}"
                class="text-decoration-none fw-semibold">
               {{ a.cliente.nombre }}
             </a>
           </td>
-          <td class="text-end fw-bold text-success">${{ "%.0f"|format(a.monto) }}</td>
+          <td class="text-end fw-bold text-success">${{ "%.2f"|format(a.monto) }}</td>
           <td class="text-muted small">{{ a.notas or '—' }}</td>
           <td class="text-muted small">{{ a.usuario.nombre }}</td>
           <td>
-            <form method="POST"
+            {% if current_user.rol == 'admin' %}<form method="POST"
                   action="{{ url_for('abonos.eliminar', id=a.id) }}"
-                  onsubmit="return confirm('¿Eliminar este abono? Se revertirá al saldo del cliente.')">
+                  onsubmit="return confirm('¿Anular este abono? Se revertirá al saldo del cliente.')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="origen" value="historial">
               <button type="submit" class="btn btn-outline-danger btn-sm py-0">
                 <i class="bi bi-trash"></i>
               </button>
-            </form>
+            </form>{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -90,7 +90,7 @@
       <tfoot class="table-light">
         <tr>
           <td colspan="2" class="fw-semibold">Total</td>
-          <td class="text-end fw-bold text-success">${{ "%.0f"|format(total_dia) }}</td>
+          <td class="text-end fw-bold text-success">${{ "%.2f"|format(total_dia) }}</td>
           <td colspan="3"></td>
         </tr>
       </tfoot>

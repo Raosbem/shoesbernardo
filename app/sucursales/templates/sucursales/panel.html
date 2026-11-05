@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}{{ sucursal.nombre }}{% endblock %}
+{% block content %}
+{% set nombres = {'borrador':'Borrador', 'pendiente':'Por comprar', 'comprado':'Comprado', 'recibido':'Recibido en local', 'entregado':'Entregado', 'cancelado':'Cancelado', 'devuelto':'Devuelto'} %}
+<div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+  <div>{% if not portal %}<a href="{{ url_for('sucursales.lista') }}" class="small">Sucursales</a>{% endif %}<h4 class="mb-1">{{ sucursal.nombre }}</h4><span class="text-muted">Comisión de sus compras: {{ '%.2f'|format(sucursal.comision_pct) }} %</span></div>
+  <div class="d-flex flex-wrap align-items-start gap-2">
+    <a class="btn btn-dark" href="{{ url_for('portal.nuevo') if portal else url_for('sucursales.nuevo_pedido', id=sucursal.id) }}">+ Hacer pedido</a>
+    {% if not portal and current_user.rol == 'admin' %}<a class="btn btn-outline-secondary" href="{{ url_for('sucursales.editar', id=sucursal.id) }}">Datos y comisión</a><a class="btn btn-outline-secondary" href="{{ url_for('sucursales.acceso', id=sucursal.id) }}">Acceso de la sucursal</a>{% endif %}
+  </div>
+</div>
+{% if not sucursal.activo %}<div class="alert alert-warning">Esta sucursal está desactivada. Su historial se conserva.</div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-6"><div class="card card-body h-100"><span class="text-muted">Deuda actual</span><strong class="fs-4 text-danger">${{ '%.2f'|format(sucursal.saldo) }}</strong><small>Incluye tickets anteriores y pagos registrados.</small></div></div>
+  <div class="col-6"><div class="card card-body h-100"><span class="text-muted">Vales disponibles</span><strong class="fs-4 text-success">${{ '%.2f'|format(disponible) }}</strong><small>Para descontar en una próxima entrega.</small></div></div>
+</div>
+<nav class="nav nav-pills gap-1 mb-3" aria-label="Secciones de la sucursal">
+  {% for key, title in [('pedidos','Mis pedidos' if portal else 'Pedidos'),('tickets','Tickets'),('vales','Vales'),('devoluciones','Devoluciones'),('pagos','Pagos')] %}
+  <a class="nav-link {% if tab == key %}active{% endif %}" href="{{ (url_for('portal.inicio') if key == 'pedidos' else url_for('portal.'+key)) if portal else url_for('sucursales.detalle', id=sucursal.id, tab=key) }}">{{ title }}</a>
+  {% endfor %}
+</nav>
+{% if tab == 'pedidos' %}
+  {% if solicitudes %}<div class="card card-body mb-3"><h6>Pedidos enviados y borradores</h6>
+    {% for s in solicitudes %}<div class="d-flex justify-content-between flex-wrap gap-2 py-2 border-bottom"><span>Pedido #{{ s.id }} · {{ (s.fecha|localtime).strftime('%d/%m/%Y') }} · {{ s.articulos|length }} artículos · {{ 'Borrador' if s.estado == 'borrador' else 'Enviado' }}</span><a href="{{ url_for('portal.solicitud' if portal else 'sucursales.solicitud', id=s.id) }}">{{ 'Continuar borrador' if s.estado == 'borrador' else 'Ver pedido' }}</a></div>{% endfor %}
+  </div>{% endif %}
+  {% if not portal %}
+    {% for t in preparaciones %}<div class="alert alert-info d-flex flex-wrap gap-2 align-items-center justify-content-between"><span>Entrega en preparación · {{ t.lineas|length }} artículos. Aún no se ha cobrado.</span><a class="btn btn-outline-dark" href="{{ url_for('sucursales.precios', id=t.id) }}">Continuar preparación</a></div>{% endfor %}
+    <form id="preparar-form" method="post" action="{{ url_for('sucursales.preparar', id=sucursal.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="alert alert-light border"><p class="mb-2">Marca los artículos <strong>recibidos</strong> que vas a entregar. Después captura el precio y descuento de cada uno.</p><button class="btn btn-primary">Preparar entrega de los seleccionados</button></div></form>
+  {% endif %}
+  {% for p in pedidos %}
+    <div class="card card-body mb-2"><div class="d-flex flex-wrap gap-2 justify-content-between">
+      <div>{% if not portal and p.estatus == 'recibido' and not p.detalle_ticket %}<label class="form-check"><input form="preparar-form" type="checkbox" name="pedidos" value="{{ p.id }}" class="form-check-input"><span class="fw-bold">Seleccionar para entrega</span></label>{% endif %}
+      <strong>{{ p.zapateria.nombre }} · {{ p.codigo_producto or 'Sin código' }}</strong><div>{{ p.descripcion }}{% if p.talla %} · Talla {{ p.talla }}{% endif %}{% if p.color %} · {{ p.color }}{% endif %}</div><small class="text-muted">{{ nombres.get(p.estatus, p.estatus) }} · Semana {{ p.semana or '—' }}</small>{% if p.precio_referencia is not none %}<div class="small text-muted">Precio de referencia: ${{ '%.2f'|format(p.precio_referencia) }}</div>{% endif %}{% if p.notas %}<div class="small">Notas: {{ p.notas }}</div>{% endif %}</div>
+      <div class="d-flex flex-wrap gap-2 align-items-start">
+        {% if not portal and p.estatus in ('pendiente','comprado') %}<form method="post" action="{{ url_for('sucursales.avanzar_pedido', id=sucursal.id, pedido_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="estatus_actual" value="{{ p.estatus }}"><button class="btn btn-outline-primary">{{ 'Marcar comprado' if p.estatus == 'pendiente' else 'Ya llegó al local' }}</button></form>{% endif %}
+        {% if p.detalle_ticket and p.detalle_ticket.ticket.estado == 'confirmado' %}<a class="btn btn-outline-dark" href="{{ url_for('portal.ticket' if portal else 'sucursales.ticket', id=p.detalle_ticket.ticket_id) }}">Ver ticket</a>{% endif %}
+        {% if p.estatus == 'entregado' and not p.devolucion %}<a class="btn btn-warning" href="{{ url_for('portal.devolver' if portal else 'sucursales.devolver', id=p.id) }}">Solicitar devolución</a>{% endif %}
+        {% if not portal and p.estatus in ('pendiente','comprado','recibido') and not p.detalle_ticket %}<form method="post" action="{{ url_for('sucursales.cancelar_pedido', id=sucursal.id, pedido_id=p.id) }}" onsubmit="return confirm('¿Cancelar este artículo?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-secondary">Cancelar artículo</button></form>{% endif %}
+      </div>
+    </div></div>
+  {% else %}<div class="card card-body text-muted">No hay artículos enviados todavía. Empieza con Hacer pedido.</div>{% endfor %}
+{% elif tab == 'tickets' %}
+  <p class="text-muted">Cada ticket corresponde a una entrega confirmada. Sus precios y comisión se conservan.</p>
+  {% for t in tickets %}<a class="card card-body text-decoration-none text-dark mb-2" href="{{ url_for('portal.ticket' if portal else 'sucursales.ticket', id=t.id) }}"><div class="d-flex flex-wrap justify-content-between gap-2"><strong>{{ t.folio }} · {{ (t.fecha_confirmacion|localtime).strftime('%d/%m/%Y') }}</strong><span>Total ${{ '%.2f'|format(t.total) }} · Pendiente ${{ '%.2f'|format(t.pendiente) }}</span></div><small>{{ t.lineas|length }} artículos · Ver detalle y PDF</small></a>{% else %}<div class="card card-body text-muted">Los tickets aparecerán cuando se confirme una entrega.</div>{% endfor %}
+{% elif tab == 'vales' %}
+  <p class="text-muted">El vale incluye el importe del producto después del descuento, sin devolver la comisión. Se aplica una sola vez al preparar otra entrega.</p>
+  {% for v in vales %}<div class="card card-body mb-2"><strong>{{ v.folio }} · {{ v.devolucion.pedido.codigo_producto }}</strong><span>Original: ${{ '%.2f'|format(v.monto) }} · Disponible: <strong>${{ '%.2f'|format(v.disponible) }}</strong></span><small>{{ (v.fecha|localtime).strftime('%d/%m/%Y') }}</small>{% for uso in v.usos %}<div class="small mt-1">Aplicado ${{ '%.2f'|format(uso.monto) }} en <a href="{{ url_for('portal.ticket' if portal else 'sucursales.ticket', id=uso.ticket_id) }}">{{ uso.ticket.folio }}</a></div>{% endfor %}</div>{% else %}<div class="card card-body text-muted">Todavía no hay vales. Se generan al aceptar la devolución física de un producto.</div>{% endfor %}
+{% elif tab == 'devoluciones' %}
+  {% include 'sucursales/_devoluciones.html' %}
+{% elif tab == 'pagos' %}
+  {% if not portal and sucursal.saldo > 0 %}<div class="card card-body mb-3"><h6>Registrar pago</h6><p class="small text-muted">Se aplica primero a los tickets pendientes más antiguos. Si el pago es para uno específico, abre ese ticket y regístralo ahí.</p><form method="post" action="{{ url_for('sucursales.abonar', id=sucursal.id) }}" class="row g-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="col-sm-4"><label for="monto-general" class="form-label">Monto recibido</label><input id="monto-general" name="monto" type="number" min="0.01" max="{{ sucursal.saldo }}" step="0.01" required class="form-control"></div><div class="col-sm-5"><label for="notas-general" class="form-label">Nota (opcional)</label><input id="notas-general" name="notas" maxlength="200" class="form-control"></div><div class="col-sm-3 align-self-end"><button class="btn btn-success w-100">Registrar pago</button></div></form></div>{% endif %}
+  {% for a in abonos %}<div class="card card-body mb-2"><strong>${{ '%.2f'|format(a.monto) }}</strong><span>{{ (a.fecha|localtime).strftime('%d/%m/%Y %H:%M') }} · {{ a.notas or 'Pago registrado' }}</span>{% if a.ticket %}<a href="{{ url_for('portal.ticket' if portal else 'sucursales.ticket', id=a.ticket_id) }}">{{ a.ticket.folio }}</a>{% else %}<small>Abono general / historial anterior</small>{% endif %}{% if not portal and current_user.rol == 'admin' %}<form method="post" action="{{ url_for('abonos.eliminar', id=a.id) }}" onsubmit="return confirm('¿Anular este pago y devolver su importe a la deuda?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="origen" value="sucursal"><button class="btn btn-sm btn-outline-danger mt-2">Anular pago</button></form>{% endif %}</div>{% else %}<div class="card card-body text-muted">No hay pagos registrados.</div>{% endfor %}
+{% endif %}
+{% if not portal and current_user.rol == 'admin' %}<form class="mt-4" method="post" action="{{ url_for('sucursales.desactivar' if sucursal.activo else 'sucursales.reactivar', id=sucursal.id) }}" onsubmit="return confirm('¿Cambiar el estado de esta sucursal? El historial se conserva.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">{{ 'Desactivar sucursal' if sucursal.activo else 'Reactivar sucursal' }}</button></form>{% endif %}
+{% endblock %}
